@@ -1,0 +1,28 @@
+version: "3.3"
+
+services:
+  nginx:
+    build: ./nginx
+    ports:
+      - 3389:80
+    volumes:
+      - ./api/diagnosis/static:/static:ro
+    depends_on:
+      - web
+    restart: "on-failure"
+#    command: [nginx-debug, '-g', 'daemon off;']
+
+  web:
+#    python manage.py collectstatic --noinput &&
+#      python manage.py makemigrations &&
+    build: ./api
+    command: sh -c "python manage.py migrate &&
+      gunicorn autotest.wsgi:application --bind 0.0.0.0:8000"
+    volumes:
+      - ./data:/code/data:rw
+      - ./media:/code/media:rw
+    env_file:
+      - ./api/local.env
+    expose:
+      - 8000
+    restart: "on-failure"
