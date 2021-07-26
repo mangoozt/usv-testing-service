@@ -1,0 +1,3 @@
+pandas==1.1.5
+geographiclib==1.52
+natsort==7.1.1
