@@ -1,3 +1,5 @@
 .idea
 data/
 media/
+static/
+*.env
