@@ -17,7 +17,7 @@ services:
     build: ./api
     command: sh -c "python manage.py migrate &&
       python manage.py collectstatic --noinput &&
-      gunicorn autotest.wsgi:application --bind 0.0.0.0:8000"
+      gunicorn autotest.wsgi:application --bind 0.0.0.0:8000 --timeout $TIMEOUT"
     volumes:
       - ./data:/code/data:rw
       - ./media:/code/media:rw
