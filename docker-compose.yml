@@ -9,7 +9,7 @@ services:
       - ./static:/static:ro
     depends_on:
       - web
-    restart: "on-failure"
+    restart: "always"
 #    command: [nginx-debug, '-g', 'daemon off;']
 
   web:
@@ -26,4 +26,4 @@ services:
       - ./api/local.env
     expose:
       - 8000
-    restart: "on-failure"
+    restart: "always"
