@@ -1,7 +1,7 @@
 import datetime
 
 from django.http import HttpResponseRedirect
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
 
 from .forms import UploadFileForm, UploadMetaFileForm
@@ -26,8 +26,25 @@ def main_view(request):
                       "code5": f(rec.code5.split(sep='::')),
                       "dists": f(rec.dists.split(sep='::')),
                       "n_targ": rec.n_targets,
-                      "title": rec.title})
+                      "title": rec.title,
+                      "slug": rec.slug})
     return render(request, 'main.html', context={'data': s_rec})
+
+
+def details(request, slug):
+    obj = get_object_or_404(TestingRecording, slug=slug)
+    f = lambda arr: [float(a) for a in arr]
+    rec = {"date": str(obj.date),
+           "code0": f(obj.code0.split(sep='::')),
+           "code1": f(obj.code1.split(sep='::')),
+           "code2": f(obj.code2.split(sep='::')),
+           "code4": f(obj.code4.split(sep='::')),
+           "code5": f(obj.code5.split(sep='::')),
+           "dists": f(obj.dists.split(sep='::')),
+           "n_targ": obj.n_targets,
+           "title": obj.title,
+           "n_sc": obj.n_scenarios}
+    return render(request, 'details.html', context=rec)
 
 
 def upload_file(request):

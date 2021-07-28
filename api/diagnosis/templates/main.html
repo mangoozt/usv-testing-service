@@ -16,44 +16,34 @@
 
 <body>
 <h1>Отчеты по тестированию алгоритма:</h1><br>
- <a href="{% url 'upload' %}" class="btn-floating btn-large waves-effect waves-light red"><i class="material-icons">add</i></a>
+{% block sidebar %}
+
+    <style>
+        .card {
+            box-shadow: 0 16px 48px #E3E7EB;
+        }
+
+    </style>
+
+    <!-- Sidebar Widgets Column -->
+    <div class="col-md-4 float-right ">
+        <div class="card my-4">
+            <h5 class="card-header">Краткая информация</h5>
+            <div class="card-body">
+                <p class="card-text">Для загрузки результатов тестирования необходим только файл отчета с
+                    bks-report.</p>
+                <a href="{% url 'upload' %}"
+                   class="btn btn-danger">Загрузить новый сценарий</a>
+            </div>
+        </div>
+    </div>
+
+{% endblock sidebar %}
 <ul class="collapsible expandable">
     {% for rec in data %}
-        <li>
-            <div class="collapsible-header"><i class="material-icons">place</i>{{ rec.title }}, число целей: {{ rec.n_targ }}, дата тестирования: {{ rec.date }}</div>
-            <div class="collapsible-body">
-                <span>Результаты тестирования</span>
-                <script type="text/javascript">
-                    google.charts.load('current', {'packages': ['corechart']});
-                    google.charts.setOnLoadCallback(drawChart);
-
-                    function drawChart() {
-                        var arr = []
-                        arr.push(['Дистанция', 'Код 0', 'Код 1', 'Код 2', 'Код 4', 'Код 5'])
-                        for(var i = 0; i < {{ rec.dists }}.length; ++i)
-                        {
-                            arr.push([{{ rec.dists }}[i], {{ rec.code0 }}[i], {{ rec.code1 }}[i], {{ rec.code2 }}[i], {{ rec.code4 }}[i], {{ rec.code5 }}[i]]);
-                        }
-                        var data = google.visualization.arrayToDataTable(arr);
-
-                        var options = {
-                            title: 'Результаты тестирования',
-                            hAxis: {title: 'Процент', titleTextStyle: {color: '#333'}},
-                            vAxis: {minValue: 0},
-                            width: 1700,
-                            height: 700
-                        };
-
-                        var chart = new google.visualization.AreaChart(document.getElementById('{{ rec.date }}'));
-                        chart.draw(data, options);
-                    }
-                </script>
-                <div id="{{ rec.date }}" style="width: 100%; height: 800px;"></div>
-            </div>
-        </li>
+        <a href="{{ rec.slug }}" class="btn btn-primary">{{ rec.title }} &rarr;</a>
     {% endfor %}
 </ul>
-
 
 <script type="text/javascript" src="{% static 'js/materialize.min.js' %}"></script>
 <script type="text/javascript">

@@ -6,6 +6,8 @@ from django.db import models
 
 from .build_graphs import build_percent_diag
 from .decorators import postpone
+from django.utils.text import slugify
+import uuid
 
 
 class TestingRecording(models.Model):
@@ -21,8 +23,11 @@ class TestingRecording(models.Model):
     n_targets = models.IntegerField(default=1)
     dists = models.TextField(blank=True, default='', max_length=2000)
     processed = models.BooleanField(default=False)
+    slug = models.SlugField(max_length=200, unique=True, default='')
+    n_scenarios = models.IntegerField(default=0)
 
     def save(self, *args, **kwargs):
+        self.slug = slugify(self.title + ' ' + str(self.date) + str(self.n_targets) + uuid.uuid4().hex[:6].upper())
         super().save(*args, **kwargs)
         if not self.processed:
             process_graphs(self)
@@ -45,14 +50,16 @@ def process_graphs(recording):
     recording.save()
 
 
-# @postpone
+@postpone
 def create_sc_for_rec(recording):
     df = None
     try:
         df = pd.read_excel(recording.file.path, engine='openpyxl')
     except:
         df = pd.read_csv(recording.file.path)
+    i = 0
     for index, row in df.iterrows():
+        i += 1
         try:
             scenario = Scenario.objects.get(name=os.path.split(row['datadir'])[1])
             obj = ScenarioResult()
@@ -71,8 +78,10 @@ def create_sc_for_rec(recording):
             obj.type1 = row['type1']
             obj.type2 = row['type2']
             obj.save()
-        except KeyError:
+        except:
             continue
+    recording.n_scenarios = i
+    recording.save()
 
 
 def process_array(arr):
