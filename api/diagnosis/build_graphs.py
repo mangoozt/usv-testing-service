@@ -34,7 +34,10 @@ def build_percent_diag(filename, dist_max, dist_min, step, show_graph=True):
     @param step:
     @return:
     """
-    df = pd.read_excel(filename, engine='openpyxl')
+    try:
+        df = pd.read_excel(filename, engine='openpyxl')
+    except:
+        df = pd.read_csv(filename)
     names = df['datadir']
     codes = df['code']
     N = int((dist_max - dist_min) / step)
