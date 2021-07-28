@@ -3,6 +3,7 @@ import datetime
 from django.http import HttpResponseRedirect
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
+import os
 
 from .forms import UploadFileForm, UploadMetaFileForm
 from .models import TestingRecording, ScenariosSet
@@ -43,7 +44,8 @@ def details(request, slug):
            "dists": f(obj.dists.split(sep='::')),
            "n_targ": obj.n_targets,
            "title": obj.title,
-           "n_sc": obj.n_scenarios}
+           "n_sc": obj.n_scenarios,
+           "img": obj.img_stats.url}
     return render(request, 'details.html', context=rec)
 
 

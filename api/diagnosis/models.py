@@ -26,6 +26,8 @@ class TestingRecording(models.Model):
     processed = models.BooleanField(default=False)
     slug = models.SlugField(max_length=200, unique=True, default='')
     n_scenarios = models.IntegerField(default=0)
+    img_stats = models.ImageField(blank=True, upload_to='images')
+    img_minister = models.ImageField(blank=True, upload_to='images')
 
     def save(self, *args, **kwargs):
         self.slug = slugify(self.title + ' ' + str(self.date) + str(self.n_targets) + uuid.uuid4().hex[:6].upper())
@@ -35,9 +37,9 @@ class TestingRecording(models.Model):
             create_sc_for_rec(self)
 
 
-@postpone
+# @postpone
 def process_graphs(recording):
-    codes = build_percent_diag(recording.file.path, 12, 4, 0.5, False)
+    codes = build_percent_diag(recording.file.path, 12, 4, 0.5)
     recording.code0 = process_array(codes[0])
     recording.code1 = process_array(codes[1])
     recording.code2 = process_array(codes[2])
@@ -45,6 +47,8 @@ def process_graphs(recording):
     recording.code5 = process_array(codes[4])
     recording.dists = process_array(codes[5])
     recording.n_targets = codes[6]
+    recording.img_stats.name = codes[7]
+    recording.img_minister.name = codes[8]
     filename = os.path.splitext(os.path.split(recording.file.path)[1])[0]
     recording.date = datetime.datetime.strptime(filename.split(sep='_')[1], "%Y-%m-%d").date()
     recording.processed = True

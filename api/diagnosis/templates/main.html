@@ -37,11 +37,11 @@
             </div>
         </div>
     </div>
-
+<br>
 {% endblock sidebar %}
 <ul class="collapsible expandable">
     {% for rec in data %}
-        <a href="{{ rec.slug }}" class="btn btn-primary">{{ rec.title }} &rarr;</a>
+        <a href="{{ rec.slug }}" class="btn btn-primary">{{ rec.title }} &rarr;</a><br><br>
     {% endfor %}
 </ul>
 
