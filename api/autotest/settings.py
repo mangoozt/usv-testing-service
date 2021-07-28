@@ -68,6 +68,9 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'autotest.urls'
 
+DATA_UPLOAD_MAX_MEMORY_SIZE = 15728640
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 409600
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -141,7 +144,6 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "diagnosis/static"),
 ]
 STATIC_ROOT = os.path.join(BASE_DIR, "static")
-
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 MEDIA_URL = '/media/'
 
