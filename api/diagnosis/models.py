@@ -3,8 +3,9 @@ import os
 
 import pandas as pd
 from django.db import models
-
+from autotest import settings
 from .build_graphs import build_percent_diag
+from .generator import Generator
 from .decorators import postpone
 from django.utils.text import slugify
 import uuid
@@ -142,6 +143,27 @@ class Scenario(models.Model):
         except IndexError:
             pass
         super().save(*args, **kwargs)
+
+    def generate_folder(self, foldername=None):
+        gen = Generator(12, 3.5, 300, 1000, safe_div_dist=1, n_targets=1, foldername="./scenars_div1_1tar",
+                        n_stack=1000)
+        targets = []
+        if self.dist1 != 0:
+            targets.append({"course": self.course1,
+                            "dist": self.dist1,
+                            "c_diff": self.course1,
+                            "v_our": self.vel_our,
+                            "v_target": self.vel1})
+        if self.dist2 != 0:
+            targets.append({"course": self.course2,
+                            "dist": self.dist2,
+                            "c_diff": self.course2,
+                            "v_our": self.vel_our,
+                            "v_target": self.vel2})
+        f_name = ("./sc_" + str(targets[0]['dist']) + str(self.pk))
+        os.chdir(settings.BASE_DIR)
+        gen.our_vel = self.vel_our
+        gen.construct_files(f_name, targets)
 
 
 STATUS = (
