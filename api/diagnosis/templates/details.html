@@ -28,10 +28,7 @@
     function drawChart() {
         var arr = []
         arr.push(['Дистанция', 'Код 0', 'Код 1', 'Код 2', 'Код 4', 'Код 5'])
-        for (var i = 0; i < {{ dists }}.
-        length;
-        ++i
-    )
+        for (var i = 0; i < {{ dists }}.length; ++i)
         {
             arr.push([{{ dists }}[i], {{ code0 }}[i], {{ code1 }}[i], {{ code2 }}[i], {{ code4 }}[i], {{ code5 }}[i]]);
         }
