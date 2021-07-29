@@ -3,3 +3,4 @@ geographiclib==1.52
 natsort==7.1.1
 gunicorn==20.1.0
 Flask==2.0.1
+docker==5.0.0

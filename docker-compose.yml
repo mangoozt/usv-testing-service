@@ -30,7 +30,7 @@ services:
 
   webhook:
       #      python manage.py makemigrations &&
-    build: ./autotest
+    build: ./webhook
     command: sh -c "gunicorn wsgi:app --bind=0.0.0.0:8000"
 #    volumes:
 #      - ./data:/code/data:rw
