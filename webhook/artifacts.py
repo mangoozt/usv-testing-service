@@ -22,7 +22,9 @@ def check_workflow_url(workflow_url, repo_url):
 def load_artifacts(workflow_url, token, directory='.'):
     with requests.Session() as session:
         session.headers = {'Authorization': f'token {token}',
-                           'accept': 'application/vnd.github.v3+json'}
+                           'accept': 'application/vnd.github.v3+json',
+                           'User-Agent': 'Awesome-Octocat-App'}
+
         result = session.get(url=f"{workflow_url}/artifacts")
         result_json = result.json()
 
@@ -38,3 +40,4 @@ def load_artifacts(workflow_url, token, directory='.'):
             except KeyError:
                 pass
         return None
+

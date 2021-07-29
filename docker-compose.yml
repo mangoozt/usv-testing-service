@@ -32,12 +32,14 @@ services:
       #      python manage.py makemigrations &&
     build: ./webhook
     command: sh -c "gunicorn wsgi:app --bind=0.0.0.0:8000"
-#    volumes:
-#      - ./data:/code/data:rw
+    volumes:
+      - ./cases:/code/cases:ro
 #      - ./media:/code/media:rw
 #      - ./static:/code/static:rw
-#    env_file:
-#      - ./api/local.env
+    env_file:
+      - ./webhook/local.env
+    tmpfs:
+      - /code/tmp
     expose:
       - 8000
     restart: "always"

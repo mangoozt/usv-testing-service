@@ -2,15 +2,17 @@
 import ctypes
 import json
 import os
+import shutil
+import stat
 import subprocess
+import tempfile
 import time
-from datetime import datetime, date
+from datetime import date
 from multiprocessing import Pool
 from pathlib import Path
 
 import pandas as pd
 from geographiclib.geodesic import Geodesic
-from natsort import natsorted
 
 CASE_FILENAMES = {'nav_data': 'nav-data.json',
                   'maneuvers': 'maneuver.json',
@@ -36,6 +38,7 @@ CASE_FILENAMES_KT = {'nav_data': 'navigation.json',
                      'settings': 'settings.json',
                      'hydrometeo': 'hydrometeo.json'}
 
+
 def fix_returncode(code):
     return ctypes.c_int32(code).value
 
@@ -45,27 +48,28 @@ class ReportGenerator:
         self.exe = executable
         self.cases = []
         self.work_dir = os.path.abspath(os.getcwd())
-        self.tmpdir = os.path.join(self.work_dir, ".bks_report\\")
+        self.tmpdir = None
         self.rvo = None
         self.nopic = None
         self.fast = False
 
     def generate(self, data_directory, glob='*', rvo=None, nopic=False):
+        self.tmpdir = tempfile.mkdtemp(prefix=os.path.join(os.getcwd(), 'tmp/'))
         self.rvo = rvo
         self.nopic = nopic
         directories_list = []
         try:
             df = pd.read_csv(data_directory + '/metainfo.csv', index_col=False)
             directories_list = df['datadirs'].values
+            directories_list = [os.path.join(data_directory, x) for x in directories_list]
         except FileNotFoundError:
             if not self.fast:
                 for path in Path(data_directory).glob(glob):
                     for root, dirs, files in os.walk(path):
                         if "nav-data.json" in files or 'navigation.json' in files:
                             directories_list.append(os.path.join(data_directory, root))
-                directories_list = natsorted(directories_list)
                 df = pd.DataFrame()
-                df['datadirs'] = directories_list
+                df['datadirs'] = [os.path.relpath(x, data_directory) for x in directories_list]
                 df.to_csv(data_directory + '/metainfo.csv')
             else:
                 dirs = os.listdir(data_directory)
@@ -74,12 +78,13 @@ class ReportGenerator:
         with Pool() as p:
             cases = p.map(self.run_case, directories_list)
 
+        shutil.rmtree(self.tmpdir)
         return Report(cases, self.exe, self.work_dir, self.rvo)
 
-    def generate_for_list(self, list, nopic=False):
+    def generate_for_list(self, case_list, nopic=False):
         self.nopic = nopic
         with Pool() as p:
-            cases = p.map(self.run_case, list)
+            cases = p.map(self.run_case, case_list)
         return Report(cases, self.exe, self.work_dir, self.rvo)
 
     def run_case(self, datadir):
@@ -92,8 +97,7 @@ class ReportGenerator:
             case_filenames = CASE_FILENAMES_KT
         # Get a list of old results
         cur_path = Path('.')
-        file_list = list(cur_path.glob(case_filenames['maneuvers'])) + \
-                    list(cur_path.glob(case_filenames['analyse']))
+        file_list = list(cur_path.glob(case_filenames['maneuvers'])) + list(cur_path.glob(case_filenames['analyse']))
 
         for filePath in file_list:
             try:
@@ -103,6 +107,11 @@ class ReportGenerator:
 
         # Print the exit code.
         exec_time = time.time()
+
+        analyse_file = os.path.join(self.tmpdir, os.path.split(datadir)[-1], 'analyse')
+        maneuver_file = os.path.join(self.tmpdir, os.path.split(datadir)[-1], 'maneuver')
+        targets_maneuver_file = os.path.join(self.tmpdir, os.path.split(datadir)[-1], 'tagets')
+
         command = [self.exe, "--target-settings", case_filenames['target_settings'],
                    "--targets", case_filenames['targets_data'],
                    "--settings", case_filenames['settings'],
@@ -110,24 +119,25 @@ class ReportGenerator:
                    "--hydrometeo", case_filenames['hydrometeo'],
                    "--constraints", case_filenames['constraints'],
                    "--route", case_filenames['route'],
-                   "--maneuver", case_filenames['maneuvers'],
-                   "--analyse", case_filenames['analyse'],
-                   "--predict", case_filenames['targets_maneuvers'],
+                   "--maneuver", maneuver_file,
+                   "--analyse", analyse_file,
+                   "--predict", targets_maneuver_file,
                    ("--rvo-enable" if self.rvo is True else "")]
 
         # Added to prevent freezing
         try:
-            completedProc = subprocess.run(command,
-                                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                           stdin=subprocess.PIPE, timeout=6)
+            completed_proc = subprocess.run(command,
+                                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                            stdin=subprocess.PIPE, timeout=6)
             exec_time = time.time() - exec_time
-            print("{} .Return code: {}. Exec time: {} sec"
-                  .format(datadir, fix_returncode(completedProc.returncode), exec_time))
+#            print("{} .Return code: {}. Exec time: {} sec"
+#                  .format(datadir, fix_returncode(completed_proc.returncode), exec_time))
+
             image_data = ""
             nav_report = ""
             target_data = None
             try:
-                with open("nav-report.json", "r") as f:
+                with open(analyse_file, "r") as f:
                     nav_report = json.dumps(json.loads(f.read()), indent=4, sort_keys=True)
             except FileNotFoundError:
                 pass
@@ -143,9 +153,6 @@ class ReportGenerator:
             except:
                 return
             datadir_i = os.path.split(datadir)[1]
-            dist1, dist2 = 0, 0
-            course1, course2 = 0, 0
-            peleng1, peleng2 = 0, 0
             lat, lon = 0, 0
             try:
                 with open(datadir + "/nav-data.json", "r") as f:
@@ -167,12 +174,12 @@ class ReportGenerator:
                 types.append(None)
 
             return {"datadir": datadir_i,
-                    "proc": completedProc,
+                    "proc": completed_proc,
                     "image_data": image_data,
                     "exec_time": exec_time,
                     "nav_report": nav_report,
                     "command": command,
-                    "code": fix_returncode(completedProc.returncode),
+                    "code": fix_returncode(completed_proc.returncode),
                     "dist1": dist1,
                     "dist2": dist2,
                     "course1": course1,
@@ -196,9 +203,6 @@ class ReportGenerator:
                 pass
 
             datadir_i = os.path.split(datadir)[1]
-            dist1, dist2 = 0, 0
-            course1, course2 = 0, 0
-            peleng1, peleng2 = 0, 0
             lat, lon = 0, 0
             try:
                 with open(datadir + "/nav-data.json", "r") as f:
@@ -280,19 +284,45 @@ class Report:
 
     def save_excel(self, filename='report.xlsx'):
         df = pd.json_normalize(self.cases)
+        df.drop(columns=['proc', 'command', 'nav_report', 'image_data'], inplace=True)
         try:
             df.to_excel(filename)
         except ValueError:
             df.to_csv(filename)
 
-    def save_csv(self, filename='report.csv'):
-        df = pd.json_normalize(self.cases)
-        df.to_csv(filename)
-
-
-
     def get_danger_params(self, statuses):
         return [rec['datadir'] for rec in self.cases if rec['code'] in statuses]
+
+
+def test_usv_archived(archive, cases_dir, report_file=None):
+    import zipfile
+    tmpdir = tempfile.mkdtemp(prefix=os.getcwd() + '/')
+    with zipfile.ZipFile(archive, 'r') as zip_ref:
+        zip_ref.extractall(tmpdir)
+    executable = os.path.join(tmpdir, 'usv')
+    result = None
+    if os.path.exists(executable):
+        os.chmod(executable, 0o777)
+        result = test_usv(executable, cases_dir, report_file)
+    shutil.rmtree(tmpdir)
+    return result
+
+
+def test_usv(executable, cases_dir, report_file=None):
+    t0 = time.time()
+    report = ReportGenerator(executable)
+    print("Starting converstion...")
+    report_out = report.generate(cases_dir)
+    print(f'Finished in {time.time() - t0} sec')
+    t_save = time.time()
+    if report_file is None:
+        report_file = "/tmp/report1_" + str(date.today()) + ".xlsx"
+
+    print(f"Starting saving report to '{report_file}'")
+    report_out.save_excel(report_file)
+    print(f'Save time: {time.time() - t_save}')
+    print(f'Total time: {time.time() - t0}')
+    return report_file
 
 
 if __name__ == "__main__":
@@ -302,28 +332,13 @@ if __name__ == "__main__":
     parser.add_argument("executable", type=str, help="Path to USV executable")
     parser.add_argument("--glob", type=str, default='*', help="Pattern for scanned directories")
 
-    parser.add_argument("--rvo", action="store_true", help="Run USV with --rvo")
-    parser.add_argument("--nopic", action="store_true", help="")
     parser.add_argument("--working_dir", type=str, help="Path to USV executable")
+    parser.add_argument("--report_file", type=str, help="Report file")
     args = parser.parse_args()
-
-    use_rvo = None
-    if args.rvo:
-        use_rvo = True
 
     if args.working_dir is not None:
         cur_dir = os.path.abspath(args.working_dir)
     else:
         cur_dir = os.path.abspath(os.getcwd())
-    t0 = time.time()
-    usv_executable = os.path.join(cur_dir, args.executable)
-    report = ReportGenerator(usv_executable)
-    print("Starting converstion...")
-    report_out = report.generate(cur_dir, glob=args.glob, rvo=use_rvo, nopic=args.nopic)
-    # print("Starting saving to HTML")
-    # report_out.save_html("report.html")
-    print("Starting saving to EXCEL")
-    name = "./reports/report1_" + str(date.today()) + ".csv"
-    # report_out.save_excel(name)
-    report_out.save_csv(name)
-    print(f'Total time: {time.time() - t0}')
+    usv_executable = os.path.abspath(args.executable)
+    test_usv(usv_executable, cur_dir)
