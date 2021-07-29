@@ -27,3 +27,17 @@ services:
     expose:
       - 8000
     restart: "always"
+
+  webhook:
+      #      python manage.py makemigrations &&
+    build: ./autotest
+    command: sh -c "gunicorn wsgi:app --bind 0.0.0.0:8000 --timeout $TIMEOUT"
+#    volumes:
+#      - ./data:/code/data:rw
+#      - ./media:/code/media:rw
+#      - ./static:/code/static:rw
+#    env_file:
+#      - ./api/local.env
+    expose:
+      - 8000
+    restart: "always"

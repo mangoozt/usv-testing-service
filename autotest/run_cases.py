@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 import ctypes
-import io
 import json
 import os
 import subprocess
 import time
-from collections import Counter
 from datetime import datetime, date
 from multiprocessing import Pool
 from pathlib import Path
@@ -280,173 +278,6 @@ class Report:
         self.work_dir = work_dir
         self.rvo = rvo
 
-    def save_html(self, filename):
-        css = """
-        *{font-family: sans-serif;}
-        h2 {margin-top: 2em;}
-        .case {
-            display: flex;
-            max-height: 540pt;
-            font-family: sans-serif;
-        }
-        .case .pic {
-            flex: 1;
-        }
-        .case .stdout {
-            flex: 1;
-            border: 1px black solid;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            background: #555;
-            overflow-y: auto;
-        }
-        .stdout pre {
-            max-height: 100%;
-            overflow-y: auto;
-            color: #fff;
-            margin: 0;
-            padding: 1em;
-            white-space: pre-line;
-            font-family: monospace;
-        }
-        .stdout pre.cmd::before {
-            content: '$ ';
-            font-weight: bold;
-        }
-        .stdout pre.cmd {background: #222;}
-        .stdout p{
-            border-bottom: 1px black solid;
-            padding: 0.5em;
-            margin: 0;
-            font: 400 13.3333px sans-serif;
-        }
-        .stdout input[type=checkbox] {
-            visibility: visible;
-            height: 2em;
-            width: 100%;
-            margin: 0;
-        }
-        .stdout input[type=checkbox]:after, .stdout p{
-            visibility: visible;
-            display: block;
-            padding: 0.5em;
-            background: #fff;
-        }
-
-        .stdout input[type=checkbox] + div {
-            display: none;
-        }
-        .stdout input[type=checkbox]:checked + div {
-            display: block;
-        }
-        .stdout input[type=checkbox]::after{content: '▸ ' attr(text);}
-        .stdout input[type=checkbox]:checked::after{content: '▾ ' attr(text);}
-        img{
-            image-rendering: -moz-crisp-edges;         /* Firefox */
-            image-rendering:   -o-crisp-edges;         /* Opera */
-            image-rendering: -webkit-optimize-contrast;/* Webkit (non-standard naming) */
-            image-rendering: crisp-edges;
-            -ms-interpolation-mode: nearest-neighbor;
-        }
-        table.summary {
-            border-collapse: collapse;
-        }
-
-        table.summary td[code="0"]{
-            background-color: green;
-            color: white;
-        }
-        table.summary td[code="1"]{
-            background-color: darkorange;
-            color: white;
-        }
-        table.summary td[code="2"]{
-            background-color: red;
-            color: white;
-        }
-        """
-        print("Creating report file in HTML format")
-        tbody = ''.join([
-            f'<tr><td><a href="#case_{i}">{os.path.relpath(case["datadir"], self.work_dir)}</a></td><td code="{case["code"]}">{case["code"]}</td></tr>'
-            for i, case in
-            enumerate(self.cases)])
-        codes = dict(Counter([case["code"] for case in self.cases]))
-        table = """
-        <table class="summary" border="1">
-        <thead><tr><td></td><td>{code_summary}</td></tr><br>
-        <tr><td>Case</td><td>Code</td></tr></thead>
-        <tbody>{tbody}</tbody>
-        </table>
-        """.format(tbody=tbody, code_summary='<br>'.join(['{}: {}'.format(k, codes[k]) for k in sorted(codes)]))
-
-        html = """<!DOCTYPE HTML>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Results from {datetime}</title>
-<style>{styles}</style>
-</head>
-<body>
-<h1>Report from {datetime} {rvo}</h1>""".format(datetime=datetime.now(), styles=css,
-                                                rvo='<b>rvo enabled</b>' if self.rvo else '')
-        html += table
-
-        for i, case in enumerate(self.cases):
-            img_tag = case["image_data"]
-            try:
-                html += """<div>
-    <h2 id="case_{case_i}">{casename}</h2>
-    <div class="case">
-    <div class="pic">
-    <picture>{image}</picture>
-    </div>
-    <div class="stdout">
-    <p>Return code: {return_code}</p>
-    <p>Execution time: {exec_time} seconds</p>
-    <input type="checkbox" text="Situation report">
-    <div><pre>{nav_report}</pre></div>
-    <input type="checkbox" text="STDOUT"{checked}><div>
-    <pre class="cmd">{command}</pre>
-    <pre>{stdout}</pre></div>
-    </div></div></div>""".format(casename=case["datadir"],
-                                 return_code=fix_returncode(case["proc"].returncode),
-                                 exec_time=case["exec_time"],
-                                 command=str(' '.join(case["command"])),
-                                 stdout=str(case["proc"].stdout.decode("utf-8")),
-                                 nav_report=case["nav_report"],
-                                 image=img_tag,
-                                 checked=" checked",
-                                 case_i=i)
-            except AttributeError:
-                html += """<div>
-                    <h2 id="case_{case_i}">{casename}</h2>
-                    <div class="case">
-                    <div class="pic">
-                    <picture>{image}</picture>
-                    </div>
-                    <div class="stdout">
-                    <p>Return code: {return_code}</p>
-                    <p>Execution time: {exec_time} seconds</p>
-                    <input type="checkbox" text="Situation report">
-                    <div><pre>{nav_report}</pre></div>
-                    <input type="checkbox" text="STDOUT"{checked}><div>
-                    <pre class="cmd">{command}</pre>
-                    <pre>{stdout}</pre></div>
-                    </div></div></div>""".format(casename=case["datadir"],
-                                                 return_code=10,
-                                                 exec_time=case["exec_time"],
-                                                 command=str(' '.join(case["command"])),
-                                                 stdout="TIME_ERR",
-                                                 nav_report=case["nav_report"],
-                                                 image="",
-                                                 checked=" checked",
-                                                 case_i=i)
-
-        html += "</body></html>"
-        with io.open(filename, "w", encoding="utf-8") as f:
-            f.write(html)
-
     def save_excel(self, filename='report.xlsx'):
         df = pd.json_normalize(self.cases)
         try:
@@ -495,8 +326,4 @@ if __name__ == "__main__":
     name = "./reports/report1_" + str(date.today()) + ".csv"
     # report_out.save_excel(name)
     report_out.save_csv(name)
-    # print("Creating report for danger scenarios")
-    # report_d_out = report.generate_for_list(report_out00.get_danger_params([2, 4]))
-    # report_d_out.save_html("report_status_2_4_" + str(date.today()) + ".html")
-    # report_d_out.save_excel("report_2_4_" + str(date.today()) + ".xlsx")
     print(f'Total time: {time.time() - t0}')
