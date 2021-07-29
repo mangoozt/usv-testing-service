@@ -50,7 +50,10 @@ def process_graphs(recording):
     recording.img_stats.name = codes[7]
     recording.img_minister.name = codes[8]
     filename = os.path.splitext(os.path.split(recording.file.path)[1])[0]
-    recording.date = datetime.datetime.strptime(filename.split(sep='_')[1], "%Y-%m-%d").date()
+    try:
+        recording.date = datetime.datetime.strptime(filename.split(sep='_')[1], "%Y-%m-%d").date()
+    except IndexError:
+        recording.date = datetime.datetime.now()
     recording.processed = True
     recording.save()
 
