@@ -1,14 +1,15 @@
 import datetime
 import os
+import uuid
 
 import pandas as pd
 from django.db import models
+from django.utils.text import slugify
+
 from autotest import settings
 from .build_graphs import build_percent_diag
-from .generator import Generator
 from .decorators import postpone
-from django.utils.text import slugify
-import uuid
+from .generator import Generator
 
 
 class TestingRecording(models.Model):
@@ -35,6 +36,9 @@ class TestingRecording(models.Model):
         if not self.processed:
             process_graphs(self)
             create_sc_for_rec(self)
+
+    def __str__(self):
+        return self.title + '_' + str(self.date)
 
 
 @postpone
@@ -198,3 +202,47 @@ class ScenarioResult(models.Model):
     peleng2 = models.FloatField(default=0)
     type1 = models.TextField(default='', max_length=300)
     type2 = models.TextField(default='', max_length=300)
+
+
+class ComparationObject(models.Model):
+    obj1 = models.ForeignKey(TestingRecording, on_delete=models.CASCADE, related_name='obj1')
+    obj2 = models.ForeignKey(TestingRecording, on_delete=models.CASCADE, related_name='obj2')
+    code0 = models.TextField(blank=True, default='', max_length=2000)
+    code1 = models.TextField(blank=True, default='', max_length=2000)
+    code2 = models.TextField(blank=True, default='', max_length=2000)
+    code4 = models.TextField(blank=True, default='', max_length=2000)
+    code5 = models.TextField(blank=True, default='', max_length=2000)
+    n_targets = models.IntegerField(default=1)
+    dists = models.TextField(blank=True, default='', max_length=2000)
+    slug = models.SlugField(max_length=200, unique=True, default='')
+    title = models.TextField(default="", max_length=1000)
+
+    def save(self, *args, **kwargs):
+        self.slug = slugify(self.obj1.title + '_' + self.obj2.title + '_' + uuid.uuid4().hex[:6].upper())
+        self.dists = self.obj1.dists
+        self.title = "Сравнение кейса <" + self.obj1.title + "> с <" + self.obj2.title + ">"
+        f = lambda s: [float(x) for x in s.split(sep='::')]
+        code0_1 = f(self.obj1.code0)
+        code1_1 = f(self.obj1.code1)
+        code2_1 = f(self.obj1.code2)
+        code4_1 = f(self.obj1.code4)
+        code5_1 = f(self.obj1.code5)
+        code0_2 = f(self.obj2.code0)
+        code1_2 = f(self.obj2.code1)
+        code2_2 = f(self.obj2.code2)
+        code4_2 = f(self.obj2.code4)
+        code5_2 = f(self.obj2.code5)
+        for i in range(len(code0_1)):
+            if i != len(code0_1) - 1:
+                self.code0 += str(code0_2[i] - code0_1[i]) + "::"
+                self.code1 += str(code1_2[i] - code1_1[i]) + "::"
+                self.code2 += str(code2_2[i] - code2_1[i]) + "::"
+                self.code4 += str(code4_2[i] - code4_1[i]) + "::"
+                self.code5 += str(code5_2[i] - code5_1[i]) + "::"
+            else:
+                self.code0 += str(code0_2[i] - code0_1[i])
+                self.code1 += str(code1_2[i] - code1_1[i])
+                self.code2 += str(code2_2[i] - code2_1[i])
+                self.code4 += str(code4_2[i] - code4_1[i])
+                self.code5 += str(code5_2[i] - code5_1[i])
+        super().save(*args, **kwargs)

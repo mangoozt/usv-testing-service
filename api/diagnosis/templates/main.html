@@ -34,10 +34,14 @@
                     bks-report.</p>
                 <a href="{% url 'upload' %}"
                    class="btn btn-danger">Загрузить новый сценарий</a>
+                <a href="{% url 'compare' %}"
+                   class="btn btn-danger">Сравнить сценарии</a>
+                <a href="{% url 'list' %}"
+                   class="btn btn-danger">Результаты сравнения</a>
             </div>
         </div>
     </div>
-<br>
+    <br>
 {% endblock sidebar %}
 <ul class="collapsible expandable">
     {% for rec in data %}

@@ -14,17 +14,32 @@
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 </head>
 <body>
-<form method="post" enctype="multipart/form-data">
-    {% csrf_token %}
-    {{ form }}
-    <input type="submit" value="Submit">
-</form>
-<script type="text/javascript">
-    $(document).ready(function () {
-        $('select').formSelect();
-        // Old way
-        // $('select').material_select();
-    });
-</script>
+<h1>Сравнение результатов тестирования:</h1><br>
+{% block sidebar %}
+
+    <style>
+        .card {
+            box-shadow: 0 16px 48px #E3E7EB;
+        }
+
+    </style>
+
+    <!-- Sidebar Widgets Column -->
+    <div class="col-md-4 float-right ">
+        <div class="card my-4">
+            <a href="{% url 'main' %}"
+               class="btn btn-danger">Назад</a>
+        </div>
+    </div>
+    <br>
+{% endblock sidebar %}
+<ul class="collapsible expandable">
+    {% for rec in data %}
+        <a href="{{ rec.slug }}" class="btn btn-primary">{{ rec.title }} &rarr;</a><br><br>
+    {% endfor %}
+</ul>
+
+<script type="text/javascript" src="{% static 'js/materialize.min.js' %}"></script>
+</body>
 </body>
 </html>

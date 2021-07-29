@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import TestingRecording, Scenario, ScenariosSet
+from .models import TestingRecording, Scenario, ScenariosSet, ComparationObject
 
 
 @admin.action(description='Сохранение выбранного сценария в папку')
@@ -23,6 +23,11 @@ class ScenariosSetAdmin(admin.ModelAdmin):
     list_display = ('n_targets', 'n_cases', 'metafile')
 
 
+class CompareAdmin(admin.ModelAdmin):
+    list_display = ('obj1', 'obj2', 'n_targets')
+
+
 admin.site.register(TestingRecording, TestingRecordingAdmin)
 admin.site.register(Scenario, ScenarioAdmin)
 admin.site.register(ScenariosSet, ScenariosSetAdmin)
+admin.site.register(ComparationObject, CompareAdmin)

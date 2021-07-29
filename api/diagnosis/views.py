@@ -3,10 +3,9 @@ import datetime
 from django.http import HttpResponseRedirect
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
-import os
 
-from .forms import UploadFileForm, UploadMetaFileForm
-from .models import TestingRecording, ScenariosSet
+from .forms import UploadFileForm, UploadMetaFileForm, ComparationForm
+from .models import TestingRecording, ScenariosSet, ComparationObject
 
 
 def main_view(request):
@@ -17,15 +16,8 @@ def main_view(request):
     """
     recordings = TestingRecording.objects.filter(processed=True)
     s_rec = []
-    f = lambda arr: [float(a) for a in arr]
     for rec in recordings:
         s_rec.append({"date": str(rec.date),
-                      "code0": f(rec.code0.split(sep='::')),
-                      "code1": f(rec.code1.split(sep='::')),
-                      "code2": f(rec.code2.split(sep='::')),
-                      "code4": f(rec.code4.split(sep='::')),
-                      "code5": f(rec.code5.split(sep='::')),
-                      "dists": f(rec.dists.split(sep='::')),
                       "n_targ": rec.n_targets,
                       "title": rec.title,
                       "slug": rec.slug})
@@ -77,3 +69,42 @@ def upload_metafile(request):
     else:
         form = UploadMetaFileForm()
     return render(request, 'upload.html', {'form': form})
+
+
+def create_comparation(request):
+    if request.method == 'POST':
+        form = ComparationForm(request.POST, request.FILES)
+        if form.is_valid():
+            obj = ComparationObject()
+            obj.obj1 = form.cleaned_data['obj1']
+            obj.obj2 = form.cleaned_data['obj2']
+            obj.slug = 'q'
+            obj.save()
+            return HttpResponseRedirect(reverse('main'))
+    else:
+        form = ComparationForm()
+    return render(request, 'upload2.html', {'form': form})
+
+
+def compare_list(request):
+    recordings = ComparationObject.objects.filter()
+    s_rec = []
+    for rec in recordings:
+        s_rec.append({"n_targ": rec.n_targets,
+                      "title": rec.title,
+                      "slug": rec.slug})
+    return render(request, 'comparation.html', context={'data': s_rec})
+
+
+def compare_details(request, slug):
+    obj = get_object_or_404(ComparationObject, slug=slug)
+    f = lambda arr: [float(a) for a in arr]
+    rec = {"code0": f(obj.code0.split(sep='::')),
+           "code1": f(obj.code1.split(sep='::')),
+           "code2": f(obj.code2.split(sep='::')),
+           "code4": f(obj.code4.split(sep='::')),
+           "code5": f(obj.code5.split(sep='::')),
+           "dists": f(obj.dists.split(sep='::')),
+           "n_targ": obj.n_targets,
+           "title": obj.title}
+    return render(request, 'details_compare.html', context=rec)
