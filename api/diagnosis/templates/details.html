@@ -41,8 +41,8 @@
 <b>Дата:</b> {{ date }}<br>
 <b>Количество целей:</b> {{ n_targ }}<br>
 <b>Общее количество тестов:</b> {{ n_sc }}<br>
-<a href="#" data-href={{ img }} download="Image_stats.jpg" onclick='forceDownload(this)'>Скачать статистику</a><br>
-<a href="#" data-href={{ img_min }} download="Image_minister.jpg" onclick='forceDownload(this)'>Скачать статистику в режиме министра</a><br>
+<a href="#" data-href={{ img }} download="Image_stats_{{ title }}.jpg" onclick='forceDownload(this)'>Скачать статистику</a><br>
+<a href="#" data-href={{ img_min }} download="Image_minister_{{ title }}.jpg" onclick='forceDownload(this)'>Скачать статистику в режиме министра</a><br>
 <a href="{% url 'main' %}" class="btn btn-primary">Назад</a>
 <script type="text/javascript">
     google.charts.load('current', {'packages': ['corechart']});
