@@ -12,6 +12,28 @@
     <!--Let browser know website is optimized for mobile-->
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript">
+        function forceDownload(link) {
+            var url = link.getAttribute("data-href");
+            var fileName = link.getAttribute("download");
+            link.innerText = "Working...";
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", url, true);
+            xhr.responseType = "blob";
+            xhr.onload = function () {
+                var urlCreator = window.URL || window.webkitURL;
+                var imageUrl = urlCreator.createObjectURL(this.response);
+                var tag = document.createElement('a');
+                tag.href = imageUrl;
+                tag.download = fileName;
+                document.body.appendChild(tag);
+                tag.click();
+                document.body.removeChild(tag);
+                link.innerText = "Download Image";
+            }
+            xhr.send();
+        }
+    </script>
 </head>
 <body>
 <h1>Результаты тестирования</h1>
@@ -19,7 +41,8 @@
 <b>Дата:</b> {{ date }}<br>
 <b>Количество целей:</b> {{ n_targ }}<br>
 <b>Общее количество тестов:</b> {{ n_sc }}<br>
-{{ img }}<br>
+<a href="#" data-href={{ img }} download="Image_stats.jpg" onclick='forceDownload(this)'>Скачать статистику</a><br>
+<a href="#" data-href={{ img_min }} download="Image_minister.jpg" onclick='forceDownload(this)'>Скачать статистику в режиме министра</a><br>
 <a href="{% url 'main' %}" class="btn btn-primary">Назад</a>
 <script type="text/javascript">
     google.charts.load('current', {'packages': ['corechart']});

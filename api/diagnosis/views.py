@@ -45,7 +45,8 @@ def details(request, slug):
            "n_targ": obj.n_targets,
            "title": obj.title,
            "n_sc": obj.n_scenarios,
-           "img": obj.img_stats.url}
+           "img": obj.img_stats.url,
+           "img_min": obj.img_minister.url}
     return render(request, 'details.html', context=rec)
 
 

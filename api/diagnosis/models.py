@@ -37,7 +37,7 @@ class TestingRecording(models.Model):
             create_sc_for_rec(self)
 
 
-# @postpone
+@postpone
 def process_graphs(recording):
     codes = build_percent_diag(recording.file.path, 12, 4, 0.5)
     recording.code0 = process_array(codes[0])
