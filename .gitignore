@@ -4,3 +4,4 @@ media/
 static/
 *.env
 venv
+cases/
