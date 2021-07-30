@@ -192,7 +192,7 @@ class ReportGenerator:
                     }
 
         except subprocess.TimeoutExpired:
-            print("TEST TIMEOUT ERR")
+            print("TEST TIMEOUT ERR:", datadir)
             exec_time = time.time() - exec_time
             os.chdir(working_dir)
             target_data = None

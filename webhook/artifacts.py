@@ -37,7 +37,7 @@ def load_artifacts(workflow_url, token, directory='.'):
                     filename = os.path.abspath(os.path.join(directory, filename))
                     open(filename, 'wb').write(r.content)
                     return filename
-            except KeyError:
-                pass
+            except KeyError or IndexError:
+                print("No artifacts")
         return None
 

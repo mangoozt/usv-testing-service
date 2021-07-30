@@ -37,6 +37,7 @@ def process_workflow(json):
         return None
     if json['workflow_job']['status'] == 'completed' and json['workflow_job']['conclusion'] == 'success':
         if check_workflow_url(json['workflow_job']['url'], repo):
+            time.sleep(1500)
             artifact = load_artifacts(json['workflow_job']['run_url'], token, '/tmp')
             if artifact is not None:
                 report_file = test_usv_archived(artifact, './cases')
