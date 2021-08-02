@@ -11,6 +11,10 @@ RUN apt-get update \
 
 ENV PYTHONUNBUFFERED=1
 ENV TIMEOUT=120
+
+RUN apt-get update \
+  && apt-get install -y libomp5
+
 WORKDIR /code
 COPY requirements.txt /code/
 RUN pip install -r requirements.txt

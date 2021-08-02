@@ -3,16 +3,16 @@ import ctypes
 import json
 import os
 import shutil
-import stat
 import subprocess
 import tempfile
 import time
 from datetime import date
 from multiprocessing import Pool
 from pathlib import Path
-
 import pandas as pd
 from geographiclib.geodesic import Geodesic
+
+from generator import Generator, generate_metadata
 
 CASE_FILENAMES = {'nav_data': 'nav-data.json',
                   'maneuvers': 'maneuver.json',
@@ -58,25 +58,16 @@ class ReportGenerator:
         self.rvo = rvo
         self.nopic = nopic
         directories_list = []
-        try:
-            df = pd.read_csv(data_directory + '/metainfo.csv', index_col=False)
-            directories_list = df['datadirs'].values
-            directories_list = [os.path.join(data_directory, x) for x in directories_list]
-        except FileNotFoundError:
-            if not self.fast:
-                for path in Path(data_directory).glob(glob):
-                    for root, dirs, files in os.walk(path):
-                        if "nav-data.json" in files or 'navigation.json' in files:
-                            directories_list.append(os.path.join(data_directory, root))
-                df = pd.DataFrame()
-                df['datadirs'] = [os.path.relpath(x, data_directory) for x in directories_list]
-                df.to_csv(data_directory + '/metainfo.csv')
-            else:
-                dirs = os.listdir(data_directory)
-                directories_list = [os.path.abspath(p) for p in dirs]
+
+        if not os.path.exists(data_directory + '/metainfo.csv'):
+            self.df = generate_metadata(data_directory)
+        else:
+            self.df = pd.read_csv(data_directory + '/metainfo.csv', index_col=False)
+
+        self.df['datadir'] = [os.path.join(data_directory, x) for x in self.df['datadir']]
 
         with Pool() as p:
-            cases = p.map(self.run_case, directories_list)
+            cases = p.map(self.run_case, range(len(self.df['datadir'])))
 
         shutil.rmtree(self.tmpdir)
         return Report(cases, self.exe, self.work_dir, self.rvo)
@@ -87,8 +78,32 @@ class ReportGenerator:
             cases = p.map(self.run_case, case_list)
         return Report(cases, self.exe, self.work_dir, self.rvo)
 
-    def run_case(self, datadir):
+    def run_case(self, df_index):
         working_dir = os.path.abspath(os.getcwd())
+        case = self.df.iloc[df_index]
+        datadir = case['datadir']
+
+        usetmp = False
+        if  False and case['dist1'] != 0:
+
+            gen = Generator(safe_div_dist=1)
+            targets = []
+            if case["dist1"] != 0:
+                targets.append({"peleng": case["peleng1"],
+                                "dist": case["dist1"],
+                                "c_diff": case["course1"],
+                                "v_target": case["speed1"]})
+            if case["dist2"] != 0:
+                targets.append({"peleng": case["peleng2"],
+                                "dist": case["dist2"],
+                                "c_diff": case["course2"],
+                                "v_target": case["speed2"]})
+            datadir = (os.path.join(self.tmpdir, os.path.split(datadir)[-1]))
+            gen.our_vel = case["speed"]
+
+            gen.construct_files(datadir, targets)
+            usetmp = True
+
         os.chdir(datadir)
 
         if os.path.exists(CASE_FILENAMES['nav_data']):
@@ -130,8 +145,8 @@ class ReportGenerator:
                                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                             stdin=subprocess.PIPE, timeout=6)
             exec_time = time.time() - exec_time
-            #            print("{} .Return code: {}. Exec time: {} sec"
-            #                  .format(datadir, fix_returncode(completed_proc.returncode), exec_time))
+            # print("{} .Return code: {}. Exec time: {} sec".format(datadir, fix_returncode(completed_proc.returncode),
+            #                                                       exec_time))
 
             image_data = ""
             nav_report = ""
@@ -147,6 +162,8 @@ class ReportGenerator:
             except FileNotFoundError:
                 pass
             os.chdir(working_dir)
+            if usetmp:
+                shutil.rmtree(datadir)
 
             try:
                 target_data = json.loads(target_data)
@@ -174,8 +191,6 @@ class ReportGenerator:
                 types.append(None)
 
             return {"datadir": datadir_i,
-                    "proc": completed_proc,
-                    "image_data": image_data,
                     "exec_time": exec_time,
                     "nav_report": nav_report,
                     "command": command,
@@ -195,6 +210,9 @@ class ReportGenerator:
             print("TEST TIMEOUT ERR:", datadir)
             exec_time = time.time() - exec_time
             os.chdir(working_dir)
+            if usetmp:
+                shutil.rmtree(datadir)
+
             target_data = None
             try:
                 with open("target-data.json", "r") as f:
@@ -220,8 +238,6 @@ class ReportGenerator:
                 dist2, course2, peleng2 = 0, 0, 0
 
             return {"datadir": datadir_i,
-                    "proc": None,
-                    "image_data": "",
                     "exec_time": exec_time,
                     "nav_report": None,
                     "command": command,
@@ -284,7 +300,7 @@ class Report:
 
     def save_file(self, filename='report.xlsx'):
         df = pd.json_normalize(self.cases)
-        df.drop(columns=['proc', 'command', 'nav_report', 'image_data'], inplace=True)
+        df.drop(columns=['command', 'nav_report', 'image_data'], inplace=True)
         try:
             file_extension = filename.split('.')[-1]
             if file_extension == 'parquet':
