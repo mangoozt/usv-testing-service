@@ -60,16 +60,27 @@ class ReportGenerator:
         directories_list = []
 
         if not os.path.exists(data_directory + '/metainfo.csv'):
-            self.df = generate_metadata(data_directory)
+            _df = generate_metadata(data_directory)
+            print("Metainfo generated")
         else:
-            self.df = pd.read_csv(data_directory + '/metainfo.csv', index_col=False)
+            _df = pd.read_csv(data_directory + '/metainfo.csv', index_col=False)
+            print("Metainfo loaded")
 
-        self.df['datadir'] = [os.path.join(data_directory, x) for x in self.df['datadir']]
+        _df['datadir'] = [os.path.join(data_directory, x) for x in _df['datadir']]
 
+        t0 = time.time()
+        print('Converting df to list')
+        df_list = _df.T.to_dict().values()
+        print('Converting time: ', time.time() - t0)
+        print('Testing in parallel')
+        t0 = time.time()
         with Pool() as p:
-            cases = p.map(self.run_case, range(len(self.df['datadir'])))
-
+            cases = p.map(self.run_case, df_list)
+        print('Testing time: ', time.time() - t0)
+        print('Clean tmp')
+        t0 = time.time()
         shutil.rmtree(self.tmpdir)
+        print('Clean time: ', time.time() - t0)
         return Report(cases, self.exe, self.work_dir, self.rvo)
 
     def generate_for_list(self, case_list, nopic=False):
@@ -78,13 +89,13 @@ class ReportGenerator:
             cases = p.map(self.run_case, case_list)
         return Report(cases, self.exe, self.work_dir, self.rvo)
 
-    def run_case(self, df_index):
+    def run_case(self, df_case):
         working_dir = os.path.abspath(os.getcwd())
-        case = self.df.iloc[df_index]
+        case = df_case
         datadir = case['datadir']
 
         usetmp = False
-        if  False and case['dist1'] != 0:
+        if False and case['dist1'] != 0:
 
             gen = Generator(safe_div_dist=1)
             targets = []
@@ -300,7 +311,7 @@ class Report:
 
     def save_file(self, filename='report.xlsx'):
         df = pd.json_normalize(self.cases)
-        df.drop(columns=['command', 'nav_report', 'image_data'], inplace=True)
+        df.drop(columns=['command', 'nav_report'], inplace=True)
         try:
             file_extension = filename.split('.')[-1]
             if file_extension == 'parquet':
@@ -316,7 +327,7 @@ class Report:
         return [rec['datadir'] for rec in self.cases if rec['code'] in statuses]
 
 
-def test_usv_archived(archive, cases_dir, report_file=None):
+def test_usv_archived(archive, cases_dir, report_file=None, file_format='csv'):
     import zipfile
     tmpdir = tempfile.mkdtemp(prefix=os.getcwd() + '/')
     with zipfile.ZipFile(archive, 'r') as zip_ref:
@@ -325,12 +336,12 @@ def test_usv_archived(archive, cases_dir, report_file=None):
     result = None
     if os.path.exists(executable):
         os.chmod(executable, 0o777)
-        result = test_usv(executable, cases_dir, report_file)
+        result = test_usv(executable, cases_dir, report_file, file_format=file_format)
     shutil.rmtree(tmpdir)
     return result
 
 
-def test_usv(executable, cases_dir, report_file=None):
+def test_usv(executable, cases_dir, report_file=None, file_format='csv'):
     t0 = time.time()
     report = ReportGenerator(executable)
     print("Starting converstion...")
@@ -338,7 +349,7 @@ def test_usv(executable, cases_dir, report_file=None):
     print(f'Finished in {time.time() - t0} sec')
     t_save = time.time()
     if report_file is None:
-        report_file = "/tmp/report1_" + str(date.today()) + ".xlsx"
+        report_file = os.path.join(cases_dir, "report1_" + str(date.today()) + "." + file_format)
 
     print(f"Starting saving report to '{report_file}'")
     report_out.save_file(report_file)
