@@ -37,9 +37,16 @@ def build_percent_diag(filename, dist_max, dist_min, step):
     @return:
     """
     try:
-        df = pd.read_excel(filename, engine='openpyxl')
-    except:
-        df = pd.read_csv(filename)
+        file_extension = filename.split('.')[-1]
+        if file_extension == 'parquet':
+            df = pd.read_parquet(filename)
+        elif file_extension == 'xlsx':
+            df = pd.read_excel(filename, engine='openpyxl')
+        else:
+            df = pd.read_csv(filename.path)
+    except ValueError:
+        df = pd.read_csv(filename.path)
+
     names = df['datadir']
     codes = df['code']
     N = int((dist_max - dist_min) / step)

@@ -61,11 +61,18 @@ def process_graphs(recording):
 
 @postpone
 def create_sc_for_rec(recording):
-    df = None
+
     try:
-        df = pd.read_excel(recording.file.path, engine='openpyxl')
-    except:
+        file_extension = recording.file.path.split('.')[-1]
+        if file_extension == 'parquet':
+            df = pd.read_parquet(recording.file.path)
+        elif file_extension == 'xlsx':
+            df = pd.read_excel(recording.file.path, engine='openpyxl')
+        else:
+            df = pd.read_csv(recording.file.path)
+    except ValueError:
         df = pd.read_csv(recording.file.path)
+
     i = 0
     for index, row in df.iterrows():
         i += 1
