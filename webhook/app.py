@@ -1,10 +1,11 @@
+import iso8601
 import os
 import re
 import time
 
 import requests
 from flask import Flask, request, Response
-from artifacts import load_artifacts, check_workflow_url
+from artifacts import load_artifacts, check_workflow_url, get_commit
 from run_cases import test_usv_archived
 from threading import Thread
 
@@ -32,19 +33,43 @@ def postpone(function):
 csrfmiddlewaretoken_re = re.compile('<input type="hidden" name="csrfmiddlewaretoken" value="([^"]+)">')
 
 
+def elipsis(content, length=50, suffix='...'):
+    if len(content) <= length:
+        return content
+    else:
+        return ' '.join(content[:length + 1].split(' ')[0:-1]) + suffix
+
+
 @postpone
 def process_workflow(json):
     if json['workflow_job']['name'] != workflow_name:
         return None
     if json['workflow_job']['status'] == 'completed' and json['workflow_job']['conclusion'] == 'success':
         if check_workflow_url(json['workflow_job']['url'], repo):
-            time.sleep(1500)
-            artifact = load_artifacts(json['workflow_job']['run_url'], token, '/tmp')
-            if artifact is not None:
-                report_file = test_usv_archived(artifact, './cases')
 
+            artifact = None
+            i = 0
+            while artifact is None and i < 10:
+                print("Waiting 10 sec for artifacts processing")
+                time.sleep(10)
+                artifact = load_artifacts(json['workflow_job']['run_url'], token, '/tmp')
+                i += 1
+
+            if artifact is not None:
+                print("Got artifact")
+                report_file = test_usv_archived(artifact, './cases', file_format='parquet')
                 files = {'file': open(report_file, 'rb')}
-                values = {'title': json['workflow_job']['head_sha']}
+
+                head_sha: str = json['workflow_job']['head_sha']
+                commit_url = json['repository']['git_commits_url'].replace('{/sha}', "/" + head_sha)
+                commit_json = get_commit(commit_url, token=token)
+
+                commit_author = commit_json['author']
+                commit_message = elipsis(commit_json['message'])
+                commit_datetime = iso8601.parse_date(commit_author['date'])
+                title = f"{commit_datetime} {head_sha[:7]} - {commit_message}"
+
+                values = {'title': title}
 
                 s = requests.Session()
                 r = s.get('http://nginx/upload/')

@@ -19,6 +19,19 @@ def check_workflow_url(workflow_url, repo_url):
     return workflow_url.find(repo_url) == 0
 
 
+def get_commit(commit_url, token):
+    with requests.Session() as session:
+        session.headers = {'Authorization': f'token {token}',
+                           'accept': 'application/vnd.github.v3+json',
+                           'User-Agent': 'Awesome-Octocat-App'}
+
+        result = session.get(url=commit_url)
+
+        if result.ok and result.status_code == 200:
+            return result.json()
+        return None
+
+
 def load_artifacts(workflow_url, token, directory='.'):
     with requests.Session() as session:
         session.headers = {'Authorization': f'token {token}',
@@ -40,4 +53,3 @@ def load_artifacts(workflow_url, token, directory='.'):
             except KeyError or IndexError:
                 print("No artifacts")
         return None
-
