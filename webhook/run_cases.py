@@ -130,8 +130,8 @@ class ReportGenerator:
                                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                             stdin=subprocess.PIPE, timeout=6)
             exec_time = time.time() - exec_time
-#            print("{} .Return code: {}. Exec time: {} sec"
-#                  .format(datadir, fix_returncode(completed_proc.returncode), exec_time))
+            #            print("{} .Return code: {}. Exec time: {} sec"
+            #                  .format(datadir, fix_returncode(completed_proc.returncode), exec_time))
 
             image_data = ""
             nav_report = ""
@@ -282,11 +282,17 @@ class Report:
         self.work_dir = work_dir
         self.rvo = rvo
 
-    def save_excel(self, filename='report.xlsx'):
+    def save_file(self, filename='report.xlsx'):
         df = pd.json_normalize(self.cases)
         df.drop(columns=['proc', 'command', 'nav_report', 'image_data'], inplace=True)
         try:
-            df.to_excel(filename)
+            file_extension = filename.split('.')[-1]
+            if file_extension == 'parquet':
+                df.to_parquet(filename)
+            elif file_extension == 'xlsx':
+                df.to_excel(filename)
+            else:
+                df.to_csv(filename)
         except ValueError:
             df.to_csv(filename)
 
@@ -319,7 +325,7 @@ def test_usv(executable, cases_dir, report_file=None):
         report_file = "/tmp/report1_" + str(date.today()) + ".xlsx"
 
     print(f"Starting saving report to '{report_file}'")
-    report_out.save_excel(report_file)
+    report_out.save_file(report_file)
     print(f'Save time: {time.time() - t_save}')
     print(f'Total time: {time.time() - t0}')
     return report_file
@@ -341,4 +347,4 @@ if __name__ == "__main__":
     else:
         cur_dir = os.path.abspath(os.getcwd())
     usv_executable = os.path.abspath(args.executable)
-    test_usv(usv_executable, cur_dir)
+    test_usv(usv_executable, cur_dir, args.report_file)
