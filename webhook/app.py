@@ -1,3 +1,5 @@
+from datetime import date
+
 import iso8601
 import os
 import re
@@ -52,12 +54,13 @@ def process_workflow(json):
             while artifact is None and i < 10:
                 print("Waiting 10 sec for artifacts processing")
                 time.sleep(10)
-                artifact = load_artifacts(json['workflow_job']['run_url'], token, '/tmp')
+                artifact = load_artifacts(json['workflow_job']['run_url'], token, './tmp')
                 i += 1
 
             if artifact is not None:
                 print("Got artifact")
-                report_file = test_usv_archived(artifact, './cases', file_format='parquet')
+                report_file = os.path.join('./tmp', "report1_" + str(date.today()) + ".parquet")
+                report_file = test_usv_archived(artifact, './cases', report_file=report_file, file_format='parquet')
                 files = {'file': open(report_file, 'rb')}
 
                 head_sha: str = json['workflow_job']['head_sha']
