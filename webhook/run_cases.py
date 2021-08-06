@@ -97,7 +97,7 @@ class ReportGenerator:
         datadir = case['datadir']
 
         usetmp = False
-        if False and case['dist1'] != 0:
+        if case['dist1'] != 0:
 
             gen = Generator(safe_div_dist=1)
             targets = []
