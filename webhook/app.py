@@ -86,7 +86,7 @@ def process_workflow(json):
 
                 r = s.post('http://nginx/upload/', files=files, data=values)
 
-                logging.info('Response code: ', r.status_code)
+                logging.info(f'Response code: { r.status_code}')
             else:
                 logging.warning('No artifact')
 
