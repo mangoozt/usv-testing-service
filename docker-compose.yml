@@ -35,7 +35,7 @@ services:
     command: sh -c "gunicorn wsgi:app --bind=0.0.0.0:8000"
     volumes:
       - ./cases:/code/cases:ro
-#      - ./media:/code/media:rw
+      - ./reports:/code/reports:rw
 #      - ./static:/code/static:rw
     env_file:
       - ./webhook/local.env

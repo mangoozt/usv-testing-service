@@ -6,3 +6,7 @@ static/
 venv
 cases*/
 **/__pycache__
+/reports/
+*.parquet
+*.xslx
+*.csv

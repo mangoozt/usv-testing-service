@@ -59,7 +59,7 @@ def process_workflow(json):
 
             if artifact is not None:
                 print("Got artifact")
-                report_file = os.path.join('./tmp', "report1_" + str(date.today()) + ".parquet")
+                report_file = os.path.join('./reports', "report_" + str(datetime.datetime.now()) + ".parquet")
                 report_file = test_usv_archived(artifact, './cases', report_file=report_file, file_format='parquet')
                 files = {'file': open(report_file, 'rb')}
 
