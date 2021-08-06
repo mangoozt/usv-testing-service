@@ -4,7 +4,7 @@ from .models import TestingRecording
 
 
 class UploadFileForm(forms.Form):
-    title = forms.CharField(max_length=50)
+    title = forms.CharField(max_length=500)
     file = forms.FileField()
 
 
