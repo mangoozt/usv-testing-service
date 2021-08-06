@@ -1,3 +1,4 @@
+import datetime
 from datetime import date
 
 import iso8601
@@ -10,6 +11,9 @@ from flask import Flask, request, Response
 from artifacts import load_artifacts, check_workflow_url, get_commit
 from run_cases import test_usv_archived
 from threading import Thread
+
+import logging
+logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 
 app = Flask(__name__)
 token = os.getenv('GITHUB_TOKEN')
@@ -52,15 +56,16 @@ def process_workflow(json):
             artifact = None
             i = 0
             while artifact is None and i < 10:
-                print("Waiting 10 sec for artifacts processing")
+                logging.info("Waiting 10 sec for artifacts processing")
                 time.sleep(10)
                 artifact = load_artifacts(json['workflow_job']['run_url'], token, './tmp')
                 i += 1
 
             if artifact is not None:
-                print("Got artifact")
+                logging.info("Got artifact")
                 report_file = os.path.join('./reports', "report_" + str(datetime.datetime.now()) + ".parquet")
                 report_file = test_usv_archived(artifact, './cases', report_file=report_file, file_format='parquet')
+                logging.info(f'Sending report file: `{report_file}`')
                 files = {'file': open(report_file, 'rb')}
 
                 head_sha: str = json['workflow_job']['head_sha']
@@ -81,9 +86,9 @@ def process_workflow(json):
 
                 r = s.post('http://nginx/upload/', files=files, data=values)
 
-                os.remove(report_file)
+                logging.info('Response code: ', r.status_code)
             else:
-                print('No artifact')
+                logging.warning('No artifact')
 
     return None
 
@@ -92,7 +97,7 @@ def process_workflow(json):
 @app.route('/github/payload', methods=['POST'])
 def playload():
     json = request.get_json()
-    print(json)
+    logging.info('Got json from github')
     try:
         if "workflow_job" in json and json["action"] == 'completed':
             process_workflow(json)

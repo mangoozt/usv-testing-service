@@ -11,8 +11,11 @@ from multiprocessing import Pool
 from pathlib import Path
 import pandas as pd
 from geographiclib.geodesic import Geodesic
+import logging
 
 from generator import Generator, generate_metadata
+
+logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 
 CASE_FILENAMES = {'nav_data': 'nav-data.json',
                   'maneuvers': 'maneuver.json',
@@ -57,30 +60,29 @@ class ReportGenerator:
         self.tmpdir = tempfile.mkdtemp(prefix=os.path.join(os.getcwd(), 'tmp/'))
         self.rvo = rvo
         self.nopic = nopic
-        directories_list = []
 
         if not os.path.exists(data_directory + '/metainfo.csv'):
             _df = generate_metadata(data_directory)
-            print("Metainfo generated")
+            logging.info("Metainfo generated")
         else:
             _df = pd.read_csv(data_directory + '/metainfo.csv', index_col=False)
-            print("Metainfo loaded")
+            logging.info("Metainfo loaded")
 
         _df['datadir'] = [os.path.join(data_directory, x) for x in _df['datadir']]
 
         t0 = time.time()
-        print('Converting df to list')
-        df_list = _df.T.to_dict().values()
-        print('Converting time: ', time.time() - t0)
-        print('Testing in parallel')
+        logging.info('Converting df to list')
+        df_list = list(_df.T.to_dict().values())
+        logging.info(f'Converting time: {time.time() - t0}')
+        logging.info('Testing in parallel')
         t0 = time.time()
         with Pool() as p:
             cases = p.map(self.run_case, df_list)
-        print('Testing time: ', time.time() - t0)
-        print('Clean tmp')
+        logging.info(f'Testing time: {time.time() - t0}')
+        logging.info('Clean tmp')
         t0 = time.time()
         shutil.rmtree(self.tmpdir)
-        print('Clean time: ', time.time() - t0)
+        logging.info(f'Clean time: {time.time() - t0}')
         return Report(cases, self.exe, self.work_dir, self.rvo)
 
     def generate_for_list(self, case_list, nopic=False):
@@ -154,12 +156,11 @@ class ReportGenerator:
         try:
             completed_proc = subprocess.run(command,
                                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                            stdin=subprocess.PIPE, timeout=6)
+                                            stdin=subprocess.PIPE, timeout=35)
             exec_time = time.time() - exec_time
             # print("{} .Return code: {}. Exec time: {} sec".format(datadir, fix_returncode(completed_proc.returncode),
             #                                                       exec_time))
 
-            image_data = ""
             nav_report = ""
             target_data = None
             try:
@@ -218,7 +219,7 @@ class ReportGenerator:
                     }
 
         except subprocess.TimeoutExpired:
-            print("TEST TIMEOUT ERR:", datadir)
+            logging.warning("TEST TIMEOUT ERR: " + datadir)
             exec_time = time.time() - exec_time
             os.chdir(working_dir)
             if usetmp:
@@ -344,17 +345,17 @@ def test_usv_archived(archive, cases_dir, report_file=None, file_format='csv'):
 def test_usv(executable, cases_dir, report_file=None, file_format='csv'):
     t0 = time.time()
     report = ReportGenerator(executable)
-    print("Starting converstion...")
+    logging.info("Starting converstion...")
     report_out = report.generate(cases_dir)
-    print(f'Finished in {time.time() - t0} sec')
+    logging.info(f'Finished in {time.time() - t0} sec')
     t_save = time.time()
     if report_file is None:
         report_file = os.path.join(cases_dir, "report1_" + str(date.today()) + "." + file_format)
 
-    print(f"Starting saving report to '{report_file}'")
+    logging.info(f"Starting saving report to '{report_file}'")
     report_out.save_file(report_file)
-    print(f'Save time: {time.time() - t_save}')
-    print(f'Total time: {time.time() - t0}')
+    logging.info(f'Save time: {time.time() - t_save}')
+    logging.info(f'Total time: {time.time() - t0}')
     return report_file
 
 
