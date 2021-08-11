@@ -46,6 +46,25 @@ def fix_returncode(code):
     return ctypes.c_int32(code).value
 
 
+def generate_case_files(case, datadir, safe_diverg_dist=1):
+    gen = Generator(safe_div_dist=safe_diverg_dist)
+    targets = []
+    if case["dist1"] != 0:
+        targets.append({"peleng": case["peleng1"],
+                        "dist": case["dist1"],
+                        "c_diff": case["course1"],
+                        "v_target": case["speed1"]})
+    if case["dist2"] != 0:
+        targets.append({"peleng": case["peleng2"],
+                        "dist": case["dist2"],
+                        "c_diff": case["course2"],
+                        "v_target": case["speed2"]})
+
+    gen.our_vel = case["speed"]
+    os.makedirs(datadir, exist_ok=True)
+    gen.construct_files(datadir, targets)
+
+
 class ReportGenerator:
     def __init__(self, executable):
         self.exe = executable
@@ -98,23 +117,8 @@ class ReportGenerator:
 
         usetmp = False
         if case['dist1'] != 0:
-
-            gen = Generator(safe_div_dist=1)
-            targets = []
-            if case["dist1"] != 0:
-                targets.append({"peleng": case["peleng1"],
-                                "dist": case["dist1"],
-                                "c_diff": case["course1"],
-                                "v_target": case["speed1"]})
-            if case["dist2"] != 0:
-                targets.append({"peleng": case["peleng2"],
-                                "dist": case["dist2"],
-                                "c_diff": case["course2"],
-                                "v_target": case["speed2"]})
             datadir = (os.path.join(self.tmpdir, os.path.split(datadir)[-1]))
-            gen.our_vel = case["speed"]
-
-            gen.construct_files(datadir, targets)
+            generate_case_files(case, datadir)
             usetmp = True
 
         os.chdir(datadir)
