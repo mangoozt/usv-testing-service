@@ -7,7 +7,7 @@ services:
       - 3389:80
     volumes:
       - ./static:/static:ro
-      - ./media:/media:ro
+      - ./data/media:/media:ro
     depends_on:
       - web
     restart: "always"
@@ -21,7 +21,7 @@ services:
       gunicorn autotest.wsgi:application --bind=0.0.0.0:8000"
     volumes:
       - ./data:/code/data:rw
-      - ./media:/code/media:rw
+      - ./data/media:/code/media:rw
       - ./static:/code/static:rw
     env_file:
       - ./api/local.env
@@ -34,8 +34,8 @@ services:
     build: ./webhook
     command: sh -c "gunicorn wsgi:app --bind=0.0.0.0:8000"
     volumes:
-      - ./cases:/code/cases:ro
-      - ./reports:/code/reports:rw
+      - ./data/cases:/code/cases:ro
+      - ./data/reports:/code/reports:rw
 #      - ./static:/code/static:rw
     env_file:
       - ./webhook/local.env
