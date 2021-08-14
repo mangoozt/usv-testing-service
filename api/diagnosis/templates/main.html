@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
     {% load static %}
     <!--Import Google Icon Font-->
@@ -15,47 +15,33 @@
 </head>
 
 <body>
-<h1>Отчеты по тестированию алгоритма:</h1><br>
-{% block sidebar %}
-
-    <style>
-        .card {
-            box-shadow: 0 16px 48px #E3E7EB;
-        }
-
-    </style>
-
-    <!-- Sidebar Widgets Column -->
-    <div class="col-md-4 float-right ">
-        <div class="card my-4">
+<div class="container">
+    {% block sidebar %}
+        <!-- Sidebar Widgets Column -->
+        <div class="col-md-4 float-right ">
             <h5 class="card-header">Краткая информация</h5>
             <div class="card-body">
                 <p class="card-text">Для загрузки результатов тестирования необходим только файл отчета с
                     bks-report.</p>
                 <a href="{% url 'upload' %}"
-                   class="btn btn-danger">Загрузить новый сценарий</a>
+                   class="btn btn-danger">Загрузить новый результат</a>
                 <a href="{% url 'compare' %}"
-                   class="btn btn-danger">Сравнить сценарии</a>
+                   class="btn btn-danger">Сравнить результаты</a>
                 <a href="{% url 'list' %}"
                    class="btn btn-danger">Результаты сравнения</a>
             </div>
         </div>
-    </div>
-    <br>
-{% endblock sidebar %}
-<ul class="collapsible expandable">
-    {% for rec in data %}
-        <a href="{{ rec.slug }}" class="btn btn-primary">{{ rec.title }} &rarr;</a><br><br>
-    {% endfor %}
-</ul>
-
-<script type="text/javascript" src="{% static 'js/materialize.min.js' %}"></script>
-<script type="text/javascript">
-
-    var elem = document.querySelector('.collapsible.expandable');
-    var instance = M.Collapsible.init(elem, {
-        accordion: false
-    });
-</script>
+        <br>
+    {% endblock sidebar %}
+    {% block content %}
+        <div class="collection with-header">
+            <div class="collection-header"><h4>Отчеты по тестированию алгоритма:</h4></div>
+            {% for rec in data %}
+                <a class="collection-item" href="{{ rec.slug }}">{{ rec.title }}</a>
+            {% endfor %}
+        </div>
+    {% endblock %}
+    <script type="text/javascript" src="{% static 'js/materialize.min.js' %}"></script>
+</div>
 </body>
 </html>

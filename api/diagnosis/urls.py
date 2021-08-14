@@ -9,5 +9,5 @@ urlpatterns = [
     path('<slug:slug>', views.details, name='details'),
     path('compare/', views.create_comparation, name='compare'),
     path('list/', views.compare_list, name='list'),
-    path('list/<slug:slug>', views.compare_details, name='comp_det')
+    path('list/<slug:slug>', views.compare_details_view, name='comp_det')
 ]
