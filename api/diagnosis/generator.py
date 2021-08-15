@@ -10,7 +10,6 @@ from shutil import copyfile
 
 import pandas as pd
 from geographiclib.geodesic import Geodesic
-from natsort import natsorted
 
 
 class Vector2(object):
@@ -474,7 +473,7 @@ class Generator(object):
             for root, dirs, files in os.walk(path):
                 if "nav-data.json" in files or 'navigation.json' in files:
                     directories_list.append(os.path.join(self.foldername, root))
-        self.dirlist = natsorted(directories_list)
+        self.dirlist = directories_list
         os.chdir(self.cwd)
 
     @staticmethod

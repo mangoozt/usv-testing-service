@@ -1,5 +1,24 @@
 {% extends 'details.html' %}
 {% block title %}{{ title }}{% endblock %}
 {% block details %}
-<a href="{% url 'list' %}" class="btn btn-primary">Назад</a>
+    <form method="post" enctype="multipart/form-data" class="col">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        <div class="input-field col s12 m6">
+            {{ form.prev.errors }}
+            {{ form.prev }}
+            <label for="{{ form.prev.id_for_label }}">Первый результат:</label>
+        </div>
+        <div class="input-field col s12 m6">
+            {{ form.obj.errors }}
+            {{ form.obj }}
+            <label for="{{ form.obj.id_for_label }}">Второй результат:</label>
+        </div>
+        <input type="submit" value="Submit" class="btn">
+    </form>
+    <script>
+        $(document).ready(function () {
+            $('select').formSelect();
+        })
+    </script>
 {% endblock %}

@@ -4,10 +4,9 @@ import json
 from django.http import HttpResponseRedirect
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
-from django.shortcuts import redirect
 
 from .forms import UploadFileForm, UploadMetaFileForm, ComparationForm
-from .models import TestingRecording, ScenariosSet, ComparationObject
+from .models import TestingRecording, ScenariosSet
 
 
 def main_view(request):
@@ -78,32 +77,17 @@ def create_comparation(request):
     if request.method == 'POST':
         form = ComparationForm(request.POST, request.FILES)
         if form.is_valid():
-            obj = ComparationObject()
-            obj.obj1 = form.cleaned_data['obj1']
-            obj.obj2 = form.cleaned_data['obj2']
-            obj.slug = 'q'
-            obj.save()
-            return redirect('comp_det', slug=obj.slug)
+            obj: TestingRecording = form.cleaned_data['obj']
+            prev: TestingRecording = form.cleaned_data['prev']
+            cmp_result = obj.compare(prev).reset_index()
+            chart_data = [cmp_result.columns.tolist()] + cmp_result.values.tolist()
+            rec = {
+                "chart_data": json.dumps(list(chart_data), ensure_ascii=False),
+                "title": "Сравнение результатов",
+                "form": ComparationForm(initial={'prev': prev, 'obj': obj})
+                # "form": ComparationForm()
+            }
+            return render(request, 'details_compare.html', context=rec)
     else:
         form = ComparationForm()
-    return render(request, 'upload2.html', {'form': form})
-
-
-def compare_list(request):
-    recordings = ComparationObject.objects.filter()
-
-    return render(request, 'comparation.html', context={'data': recordings})
-
-
-def compare_details_view(request, slug):
-    obj = get_object_or_404(ComparationObject, slug=slug)
-
-    def f(arr):
-        return [float(a) for a in arr.split(sep='::')]
-
-    chart_data = list(zip(f(obj.dists), f(obj.code0), f(obj.code1), f(obj.code2), f(obj.code4), f(obj.code5)))
-    chart_data = [('Дистанция', 'Код 0', 'Код 1', 'Код 2', 'Код 4', 'Код 5')] + chart_data
-    rec = {"chart_data": json.dumps(list(chart_data), ensure_ascii=False),
-           "n_targ": obj.n_targets,
-           "title": obj.title}
-    return render(request, 'details_compare.html', context=rec)
+        return render(request, 'details_compare.html', {'form': form, "title": "Сравнение результатов", })
