@@ -177,9 +177,6 @@ class ReportGenerator:
                     target_data = json.dumps(json.loads(f.read()), indent=4, sort_keys=True)
             except FileNotFoundError:
                 pass
-            os.chdir(working_dir)
-            if usetmp:
-                shutil.rmtree(datadir)
 
             try:
                 target_data = json.loads(target_data)
@@ -202,10 +199,13 @@ class ReportGenerator:
             except IndexError or TypeError:
                 dist2, course2, peleng2 = 0, 0, 0
 
-            types, right = self.load_maneuver(datadir)
+            types, right = self.load_maneuver(maneuver_file, analyse_file)
             if len(types) == 1:
                 types.append(None)
 
+            os.chdir(working_dir)
+            if usetmp:
+                shutil.rmtree(datadir)
             return {"datadir": datadir_i,
                     "exec_time": exec_time,
                     "nav_report": nav_report,
@@ -225,9 +225,6 @@ class ReportGenerator:
         except subprocess.TimeoutExpired:
             logging.warning("TEST TIMEOUT ERR: " + datadir)
             exec_time = time.time() - exec_time
-            os.chdir(working_dir)
-            if usetmp:
-                shutil.rmtree(datadir)
 
             target_data = None
             try:
@@ -253,6 +250,9 @@ class ReportGenerator:
             except:
                 dist2, course2, peleng2 = 0, 0, 0
 
+            os.chdir(working_dir)
+            if usetmp:
+                shutil.rmtree(datadir)
             return {"datadir": datadir_i,
                     "exec_time": exec_time,
                     "nav_report": None,
@@ -269,33 +269,39 @@ class ReportGenerator:
                     "type2": None
                     }
 
-    def load_maneuver(self, datadir):
+    def load_maneuver(self, maneuver_file, analyse_file):
         """
         Returns turn direction and scenarios types.
         @param datadir: data directory.
         @return: array with target types and turn direction.
         """
+        right = None
         try:
-            c_dif = 0
-            with open(datadir + "/maneuver.json", "r") as f:
+            with open(maneuver_file, "r") as f:
                 maneuver = json.loads(f.read())
                 parts = maneuver[0]['path']['items']
                 start_angle = parts[0]['begin_angle']
                 for part in parts:
                     if part['begin_angle'] != start_angle:
                         c_dif = part['begin_angle'] - start_angle
+                        right = c_dif > 0
                         break
             #         if c_dif < 0 -> left, else right
             #         right = True
-            types = []
-            with open(datadir + "/nav-report.json", "r") as f:
+        except FileNotFoundError:
+            pass
+        types = []
+        try:
+            with open(analyse_file, "r") as f:
                 report = json.loads(f.read())
                 targets = report['target_statuses']
                 for target in targets:
                     types.append(target['scenario_type'])
-            return types, c_dif > 0
+
         except FileNotFoundError:
-            return [None], None
+            pass
+
+        return types, right
 
     def get_target_params(self, lat, lon, target_data):
         lat_t, lon_t = target_data["lat"], target_data["lon"]
