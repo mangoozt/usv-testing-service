@@ -4,14 +4,6 @@ import os
 import matplotlib.pyplot as plt
 import pandas as pd
 
-vel_param = [4, 6.5, 8.5, 9.8, 12.2, 16, 19, 20]
-vel_param_x = [4, 4.333, 4.666, 5, 6, 7, 8, 8.333]
-
-vel_func = lambda x: 3.06 * x - 5.502
-
-unsolved_x = [5, 6, 7, 8, 9, 10, 11, 11.5]
-unsolved_y = [81, 91, 96, 100, 100, 100, 100, 100]
-
 
 def get_n_targets(name):
     """
@@ -27,19 +19,16 @@ def get_n_targets(name):
         return 2
 
 
-def build_percent_diag(filename, dist_max, dist_min, step):
+def build_percent_diag(filename):
     """
     Builds percent diagram with codes and errors to velocities graph
     @param filename:
-    @param dist_max:
-    @param dist_min:
-    @param step:
     @return:
     """
     try:
         file_extension = filename.split('.')[-1]
         if file_extension == 'parquet':
-            df = pd.read_parquet(filename)
+            df = pd.read_parquet(filename, engine='fastparquet')
         elif file_extension == 'xlsx':
             df = pd.read_excel(filename, engine='openpyxl')
         else:
@@ -47,70 +36,32 @@ def build_percent_diag(filename, dist_max, dist_min, step):
     except ValueError:
         df = pd.read_csv(filename.path)
 
-    names = df['datadir']
-    codes = df['code']
-    N = int((dist_max - dist_min) / step)
-    dists = [dist_min + i * step for i in range(N + 1)]
-    N_dists = [0 for i in range(N + 1)]
-    code0 = [0 for i in range(N + 1)]
-    code1 = [0 for i in range(N + 1)]
-    code2 = [0 for i in range(N + 1)]
-    code4 = [0 for i in range(N + 1)]
-    code5 = [0 for i in range(N + 1)]
-    code4_fnmes = []
-    vel2 = []
-    dist2 = []
-    f_names2 = []
-    n_targ = 1
-    for i, name in enumerate(names):
-        foldername = os.path.split(name)[1]
+    def get_distance(foldername):
+        foldername = os.path.split(foldername)[1]
         n_targ = get_n_targets(foldername)
         foldername2 = foldername.split(sep="_")
-        dist = 0
         if n_targ == 1:
-            dist = max(float(foldername2[1]), float(foldername2[2]))
+            return max(float(foldername2[1]), float(foldername2[2]))
         elif n_targ == 2:
-            dist = min(float(foldername2[1]), float(foldername2[2]))
-        if codes[i] == 0:
-            ind = round((dist - dist_min) / step)
-            if N_dists[ind] > -1:
-                code0[ind] += 1
-                N_dists[ind] += 1
-        elif codes[i] == 2:
-            ind = round((dist - dist_min) / step)
-            if N_dists[ind] > -1:
-                code2[ind] += 1
-                N_dists[ind] += 1
-            vel2.append(float(foldername2[3]))
-            dist2.append(dist)
-            if float(foldername2[3]) < vel_func(dist):
-                f_names2.append(foldername)
-        elif codes[i] == 4:
-            ind = round((dist - dist_min) / step)
-            if N_dists[ind] > -1:
-                code4[ind] += 1
-                N_dists[ind] += 1
-            code4_fnmes.append(foldername)
-        elif codes[i] == 1:
-            ind = round((dist - dist_min) / step)
-            if N_dists[ind] > -1:
-                code1[ind] += 1
-                N_dists[ind] += 1
-        elif codes[i] == 5:
-            ind = round((dist - dist_min) / step)
-            if N_dists[ind] > -1:
-                code5[ind] += 1
-                N_dists[ind] += 1
-    for i in range(N + 1):
-        if N_dists[i] == 0:
-            N_dists[i] = 1
-    code0_p = [code0[i] / N_dists[i] * 100 for i in range(N + 1)]
-    code1_p = [code1[i] / N_dists[i] * 100 for i in range(N + 1)]
-    code2_p = [code2[i] / N_dists[i] * 100 for i in range(N + 1)]
-    code4_p = [code4[i] / N_dists[i] * 100 for i in range(N + 1)]
-    code5_p = [code5[i] / N_dists[i] * 100 for i in range(N + 1)]
-    print(N_dists)
+            return min(float(foldername2[1]), float(foldername2[2]))
+
+    df['dist'] = df['datadir'].apply(get_distance)
+    n_targ = 2 if len(df.query('dist1!=0 & dist2 != 0')) else 1
+    a = pd.pivot_table(df, values='datadir', index=['dist'], columns=['code'], aggfunc='count', fill_value=0)
+    asum = a.sum(axis=1)
+    a = a.divide(asum, axis=0) * 100
+    dists = list(a.index)
+    code0_p = list(a[0].values)
+    code1_p = list(a[1].values)
+    code2_p = list(a[2].values)
+    code4_p = list(a[4].values)
+    code5_p = list(a[5].values)
+    print(list(asum.values))
     return [code0_p, code1_p, code2_p, code4_p, code5_p, dists, n_targ, ]
+
+
+def test3():
+    a = build_percent_diag('/home/user/source/usv-testing-service/api/data/report_2021-08-06 21:28:39.783765.parquet')
 
 
 def plot_graph_normal(df: pd.DataFrame, title=''):

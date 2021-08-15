@@ -77,7 +77,7 @@ class TestingRecording(models.Model):
 
 @postpone
 def process_graphs(recording):
-    codes = build_percent_diag(recording.file.path, 12, 4, 0.5)
+    codes = build_percent_diag(recording.file.path)
     recording.code0 = process_array(codes[0])
     recording.code1 = process_array(codes[1])
     recording.code2 = process_array(codes[2])
