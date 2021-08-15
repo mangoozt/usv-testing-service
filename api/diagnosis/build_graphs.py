@@ -1,4 +1,4 @@
-import datetime
+import itertools
 import os
 
 import matplotlib.pyplot as plt
@@ -110,41 +110,38 @@ def build_percent_diag(filename, dist_max, dist_min, step):
     code4_p = [code4[i] / N_dists[i] * 100 for i in range(N + 1)]
     code5_p = [code5[i] / N_dists[i] * 100 for i in range(N + 1)]
     print(N_dists)
-    name_n = plot_graph_normal(name, code0_p, code1_p, code2_p, code4_p, code5_p, dists, n_targ, dist_min, dist_max)
-    name_m = plot_minister_mode(name, code0_p, code1_p, code2_p, code4_p, code5_p, dists, n_targ, dist_min, dist_max)
-    return [code0_p, code1_p, code2_p, code4_p, code5_p, dists, n_targ, name_n, name_m]
+    return [code0_p, code1_p, code2_p, code4_p, code5_p, dists, n_targ, ]
 
 
-def plot_graph_normal(name, code0_p, code1_p, code2_p, code4_p, code5_p, dists, n_targ, dist_min, dist_max):
-    plt.figure(figsize=(10, 6), dpi=200)
-    plt.plot(dists, code0_p, 'b', label="Код 0", linewidth=3)
-    plt.plot(dists, code1_p, 'r', label="Код 1")
-    plt.plot(dists, code2_p, 'y--', label="Код 2")
-    plt.plot(dists, code4_p, 'o--', label="Код 4")
-    plt.plot(dists, code5_p, 'g', label="Код 5")
+def plot_graph_normal(df: pd.DataFrame, title=''):
+    fig = plt.figure(figsize=(10, 6), dpi=200)
+    style = itertools.cycle(['b', 'r', 'y--', 'o--', 'g', 'g--'])
+
+    plt.plot(df.index, df[df.columns[0]], next(style), label=df.columns[0], linewidth=3)
+    for col in df.columns[1:]:
+        plt.plot(df.index, df[col], next(style), label=col)
+
     plt.grid()
-    plt.axis([dist_min, dist_max, 0, 100])
+    plt.axis([min(df.index), max(df.index), 0, 100])
     plt.xlabel('Дистанция до ближайшей цели, мили', fontsize=20)
     plt.ylabel('Маневр построен, %', fontsize=20)
     # plt.plot(unsolved_x, unsolved_y, 'o--')
     plt.legend(loc='upper left', shadow=True)
-    plt.title("Дата: " + str(datetime.date.today()) + ", цели: " + str(n_targ))
-    i_name = "./media/" + str(datetime.date.today()) + "_" + str(n_targ) + "_" + name + "_stats.png"
-    plt.savefig(i_name)
-    return os.path.split(i_name)[1]
+    plt.title(title)
+
+    return fig
 
 
-def plot_minister_mode(name, code0_p, code1_p, code2_p, code4_p, code5_p, dists, n_targ, dist_min, dist_max):
-    plt.figure(figsize=(10, 6), dpi=200)
-    code0 = [code0_p[i] + code1_p[i] + code5_p[i] for i in range(len(dists))]
-    plt.plot(dists, code0, 'b', label="Код 0", linewidth=3)
-    plt.fill_between(dists, code0, 100, color='orange', alpha=0.5)
-    plt.fill_between(dists, code0, 0, color='green', alpha=0.5)
+def plot_minister_mode(df: pd.DataFrame, title=''):
+    fig = plt.figure(figsize=(10, 6), dpi=200)
+    code0 = df['Код 0'] + df['Код 1'] + df['Код 5']
+    plt.plot(df.index, code0, 'b', label="Код 0", linewidth=3)
+    plt.fill_between(df.index, code0, 100, color='orange', alpha=0.5)
+    plt.fill_between(df.index, code0, 0, color='green', alpha=0.5)
     plt.grid()
-    plt.axis([dist_min, dist_max, 0, 100])
+    plt.axis([min(df.index), max(df.index), 0, 100])
     plt.xlabel('Дистанция до ближайшей цели, мили', fontsize=20)
     plt.ylabel('Маневр построен, %', fontsize=20)
-    plt.title("Дата: " + str(datetime.date.today()) + ", цели: " + str(n_targ))
-    i_name = "./media/" + str(datetime.date.today()) + "_" + str(n_targ) + "_" + name + "_minister.png"
-    plt.savefig(i_name)
-    return os.path.split(i_name)[1]
+    plt.title(title)
+
+    return fig

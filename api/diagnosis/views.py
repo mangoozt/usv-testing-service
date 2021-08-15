@@ -1,10 +1,11 @@
 import datetime
+import io
 import json
 
-from django.http import HttpResponseRedirect
+from matplotlib import pyplot as plt
+from django.http import HttpResponseRedirect, FileResponse
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
-
 from .forms import UploadFileForm, UploadMetaFileForm, ComparationForm
 from .models import TestingRecording, ScenariosSet
 
@@ -28,20 +29,26 @@ def main_view(request):
 def details(request, slug):
     obj = get_object_or_404(TestingRecording, slug=slug)
 
-    def f(arr):
-        return [float(a) for a in arr.split(sep='::')]
-
-    chart_data = list(zip(f(obj.dists), f(obj.code0), f(obj.code1), f(obj.code2), f(obj.code4), f(obj.code5)))
-    chart_data = [('Дистанция', 'Код 0', 'Код 1', 'Код 2', 'Код 4', 'Код 5')] + chart_data
-
+    df = obj.to_dataframe().reset_index()
+    chart_data = [df.columns.tolist()] + df.values.tolist()
     rec = {"chart_data": json.dumps(list(chart_data), ensure_ascii=False),
            "date": str(obj.date),
            "n_targ": obj.n_targets,
            "title": obj.title,
            "n_sc": obj.n_scenarios,
-           "img": obj.img_stats.url,
-           "img_min": obj.img_minister.url}
+           "img": reverse('testing_result_plot', kwargs={'slug': obj.slug}),
+           "img_min": reverse('testing_result_plot', kwargs={'slug': obj.slug, 'type': 'minister'})}
     return render(request, 'details.html', context=rec)
+
+
+def testing_result_plot(request, slug, type='normal'):
+    obj = get_object_or_404(TestingRecording, slug=slug)
+    fig: plt.Figure = obj.gen_plot(type)
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png')
+    buf.seek(0)
+    response = FileResponse(buf, content_type="image/png", filename=f'{obj.slug}_{type}.png')
+    return response
 
 
 def upload_file(request):

@@ -3,11 +3,11 @@ import os
 import uuid
 
 import pandas as pd
+from autotest import settings
 from django.db import models
 from django.utils.text import slugify
 
-from autotest import settings
-from .build_graphs import build_percent_diag
+from .build_graphs import build_percent_diag, plot_graph_normal, plot_minister_mode
 from .decorators import postpone
 from .generator import Generator
 
@@ -27,8 +27,6 @@ class TestingRecording(models.Model):
     processed = models.BooleanField(default=False)
     slug = models.SlugField(max_length=200, unique=True, default='')
     n_scenarios = models.IntegerField(default=0)
-    img_stats = models.ImageField(blank=True, upload_to='images')
-    img_minister = models.ImageField(blank=True, upload_to='images')
 
     def save(self, *args, **kwargs):
         self.slug = slugify(self.title + ' ' + str(self.date) + str(self.n_targets) + uuid.uuid4().hex[:6].upper())
@@ -36,6 +34,14 @@ class TestingRecording(models.Model):
         if not self.processed:
             process_graphs(self)
             create_sc_for_rec(self)
+
+    def to_dataframe(obj):
+        def f(arr):
+            return [float(a) for a in arr.split(sep='::')]
+
+        return pd.DataFrame(
+            data=list(zip(f(obj.dists), f(obj.code0), f(obj.code1), f(obj.code2), f(obj.code4), f(obj.code5))),
+            columns=('Дистанция', 'Код 0', 'Код 1', 'Код 2', 'Код 4', 'Код 5')).set_index('Дистанция')
 
     def compare(self, previous):
         """
@@ -45,20 +51,25 @@ class TestingRecording(models.Model):
         @rtype: pd.DataFrame
         """
 
-        def f(arr):
-            return [float(a) for a in arr.split(sep='::')]
-
-        def make_chart_data(obj):
-            return pd.DataFrame(
-                data=list(zip(f(obj.dists), f(obj.code0), f(obj.code1), f(obj.code2), f(obj.code4), f(obj.code5))),
-                columns=('Дистанция', 'Код 0', 'Код 1', 'Код 2', 'Код 4', 'Код 5')).set_index('Дистанция')
-
-        self_chart_data = make_chart_data(self)
-        previous_chart_data = make_chart_data(previous)
+        self_chart_data = self.to_dataframe()
+        previous_chart_data = previous.to_dataframe()
 
         result = self_chart_data.sub(previous_chart_data)
 
         return result
+
+    def gen_plot(self, type='normal'):
+        """
+        Строит график по статистике записи тестирования
+        @param type: Тип графика: 'normal' или 'minister'
+        @return: График
+        """
+        if type == 'minister':
+            return plot_minister_mode(self.to_dataframe(),
+                                      title=f"Дата`{self.date}`. Целей: {self.n_targets}")
+        else:
+            return plot_graph_normal(self.to_dataframe(),
+                                     title=f"`{self.title}`. Целей: {self.n_targets}")
 
     def __str__(self):
         return self.title + '_' + str(self.date)
@@ -74,9 +85,6 @@ def process_graphs(recording):
     recording.code5 = process_array(codes[4])
     recording.dists = process_array(codes[5])
     recording.n_targets = codes[6]
-    recording.img_stats.name = codes[7]
-    recording.img_minister.name = codes[8]
-    # filename = os.path.splitext(os.path.split(recording.file.path)[1])[0]
     recording.date = datetime.datetime.now()
     recording.processed = True
     recording.save()
