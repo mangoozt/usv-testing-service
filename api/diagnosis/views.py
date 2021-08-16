@@ -36,6 +36,7 @@ def details(request, slug):
            "n_targ": obj.n_targets,
            "title": obj.title,
            "n_sc": obj.n_scenarios,
+           "statistics_file": obj.file,
            "img": reverse('testing_result_plot', kwargs={'slug': obj.slug}),
            "img_min": reverse('testing_result_plot', kwargs={'slug': obj.slug, 'type': 'minister'})}
     return render(request, 'details.html', context=rec)

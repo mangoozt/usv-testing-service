@@ -1,4 +1,9 @@
 {% extends 'details.html' %}
+{% load django_bootstrap_breadcrumbs %}
+{% block breadcrumbs %}
+    {% breadcrumb "Home" "/" %}
+    {% breadcrumb "Сравнение результатов" "/compare/" %}
+{% endblock %}
 {% block title %}{{ title }}{% endblock %}
 {% block details %}
     <form method="post" enctype="multipart/form-data" class="col">

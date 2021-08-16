@@ -14,52 +14,81 @@
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 </head>
 <body>
+{% load django_bootstrap_breadcrumbs %}
+{% block breadcrumbs %}
+    {% breadcrumb "Home" "/" %}
+    {% breadcrumb "Результаты тестирования" "" %}
+{% endblock %}
+{% render_breadcrumbs "breadcrumbs.html" %}
 <div class="container">
     <h3 class="header">{% block title %}Результаты тестирования{% endblock %}</h3>
 
     {% block details %}
-        <b>Кейс:</b> {{ title }}<br>
-        <b>Дата:</b> {{ date }}<br>
-        <b>Количество целей:</b> {{ n_targ }}<br>
-        <b>Общее количество тестов:</b> {{ n_sc }}<br>
-        <a href="{{ img }}">Cтатистика</a><br>
-        <a href="{{ img_min }}">Статистика в режиме министра</a><br>
+        <div class="row">
+            <div class="col m9">
+                <table>
+                    <tr>
+                        <th>Кейс:</th>
+                        <td>{{ title }}</td>
+                    </tr>
+                    <tr>
+                        <th>Дата:</th>
+                        <td>{{ date }}</td>
+                    </tr>
+                    <tr>
+                        <th>Количество целей:</th>
+                        <td> {{ n_targ }}</td>
+                    </tr>
+                    <tr>
+                        <th>Общее количество тестов:</th>
+                        <td>{{ n_sc }}</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="col m3">
+                <div class="collection">
+                    <a href="{{ statistics_file }}" class="collection-item">Файл статистики</a>
+                    <a href="{{ img }}" class="collection-item">График</a>
+                    <a href="{{ img_min }}" class="collection-item">График в режиме министра</a>
+                </div>
+            </div>
+        </div>
     {% endblock %}
 
 </div>
-    <div id="graph"></div>
-    <script type="text/javascript">
-        google.charts.load('current', {'packages': ['corechart']});
-        google.charts.setOnLoadCallback(drawChart);
+<div id="graph"></div>
+<script type="text/javascript">
+    google.charts.load('current', {'packages': ['corechart']});
+    google.charts.setOnLoadCallback(drawChart);
 
-        function drawChart() {
-            const chart_data = {{ chart_data|safe }};
-            const data = google.visualization.arrayToDataTable(chart_data);
-            const options = {
-                title: '',
-                hAxis: {title: 'Дистанция', titleTextStyle: {color: '#333'}},
-                vAxis: {minValue: 0, title: 'Процент'},
-                width: '100%',
-                height: 700
-            };
+    function drawChart() {
+        const chart_data = {{ chart_data|safe }};
+        const data = google.visualization.arrayToDataTable(chart_data);
+        const options = {
+            title: '',
+            hAxis: {title: 'Дистанция', titleTextStyle: {color: '#333'}},
+            vAxis: {minValue: 0, title: 'Процент'},
+            width: '100%',
+            height: 700
+        };
 
-            var chart = new google.visualization.AreaChart(document.getElementById('chart'));
+        var chart = new google.visualization.AreaChart(document.getElementById('chart'));
+        chart.draw(data, options);
+
+        function resizeChart() {
             chart.draw(data, options);
-
-            function resizeChart() {
-                chart.draw(data, options);
-            }
-
-            if (document.addEventListener) {
-                window.addEventListener('resize', resizeChart);
-            } else if (document.attachEvent) {
-                window.attachEvent('onresize', resizeChart);
-            } else {
-                window.resize = resizeChart;
-            }
         }
-    </script>
-    <div id="chart" style="width: 100%; height: 800px;"></div>
+
+        if (document.addEventListener) {
+            window.addEventListener('resize', resizeChart);
+        } else if (document.attachEvent) {
+            window.attachEvent('onresize', resizeChart);
+        } else {
+            window.resize = resizeChart;
+        }
+    }
+</script>
+<div id="chart" style="width: 100%; height: 800px;"></div>
 <script type="text/javascript" src="{% static 'js/materialize.min.js' %}"></script>
 </body>
 </html>
