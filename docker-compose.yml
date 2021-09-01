@@ -16,7 +16,8 @@ services:
   web:
 #      python manage.py makemigrations &&
     build: ./api
-    command: sh -c "python manage.py migrate &&
+    command: sh -c "python manage.py makemigrations &&
+      python manage.py migrate &&
       python manage.py collectstatic --noinput &&
       gunicorn autotest.wsgi:application --bind=0.0.0.0:8000"
     volumes:
@@ -24,7 +25,9 @@ services:
       - ./data/media:/code/media:rw
       - ./static:/code/static:rw
     env_file:
-      - ./api/local.env
+      - ./local.env
+    environment:
+      POSTGRES_HOST: db
     expose:
       - 8000
     restart: "always"
@@ -38,9 +41,19 @@ services:
       - ./data/reports:/code/reports:rw
 #      - ./static:/code/static:rw
     env_file:
-      - ./webhook/local.env
+      - ./local.env
     tmpfs:
       - /code/tmp
     expose:
       - 8000
     restart: "always"
+
+  db:
+    image: postgres
+    restart: always
+    env_file:
+      - ./local.env
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data:rw
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
