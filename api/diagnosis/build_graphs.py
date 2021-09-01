@@ -60,10 +60,6 @@ def build_percent_diag(filename):
     return [code0_p, code1_p, code2_p, code4_p, code5_p, dists, n_targ, ]
 
 
-def test3():
-    a = build_percent_diag('/home/user/source/usv-testing-service/api/data/report_2021-08-06 21:28:39.783765.parquet')
-
-
 def plot_graph_normal(df: pd.DataFrame, title=''):
     fig = plt.figure(figsize=(10, 6), dpi=200)
     style = itertools.cycle(['b', 'r', 'y--', 'o--', 'g', 'g--'])
@@ -74,11 +70,11 @@ def plot_graph_normal(df: pd.DataFrame, title=''):
 
     plt.grid()
     plt.axis([min(df.index), max(df.index), 0, 100])
-    plt.xlabel('Дистанция до ближайшей цели, мили', fontsize=20)
-    plt.ylabel('Маневр построен, %', fontsize=20)
-    # plt.plot(unsolved_x, unsolved_y, 'o--')
+    plt.xlabel('Дистанция до ближайшей цели, мили', fontsize=18)
+    plt.ylabel('Маневр построен, %', fontsize=18)
     plt.legend(loc='upper left', shadow=True)
     plt.title(title)
+    plt.tight_layout()
 
     return fig
 
@@ -91,8 +87,9 @@ def plot_minister_mode(df: pd.DataFrame, title=''):
     plt.fill_between(df.index, code0, 0, color='green', alpha=0.5)
     plt.grid()
     plt.axis([min(df.index), max(df.index), 0, 100])
-    plt.xlabel('Дистанция до ближайшей цели, мили', fontsize=20)
-    plt.ylabel('Маневр построен, %', fontsize=20)
+    plt.xlabel('Дистанция до ближайшей цели, мили', fontsize=18)
+    plt.ylabel('Маневр построен, %', fontsize=18)
     plt.title(title)
+    plt.tight_layout()
 
     return fig
