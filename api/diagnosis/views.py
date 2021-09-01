@@ -16,7 +16,7 @@ def main_view(request):
     @param request:
     @return:
     """
-    recordings = TestingRecording.objects.filter(processed=True)
+    recordings = TestingRecording.objects.filter(processed=True).order_by('-pk')
     s_rec = []
     for rec in recordings:
         s_rec.append({"date": str(rec.date),
