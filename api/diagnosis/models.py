@@ -6,6 +6,7 @@ import pandas as pd
 from autotest import settings
 from django.db import models
 from django.utils.text import slugify
+from django.utils import timezone
 
 from .build_graphs import build_percent_diag, plot_graph_normal, plot_minister_mode
 from .decorators import postpone
@@ -13,7 +14,7 @@ from .generator import Generator
 
 
 class TestingRecording(models.Model):
-    date = models.DateTimeField(default=datetime.datetime.now)
+    date = models.DateTimeField(default=timezone.now())
     file = models.FileField(upload_to='')
     title = models.TextField(default="", max_length=1000)
     commit_sha1 = models.TextField(default="", max_length=40)
@@ -87,7 +88,7 @@ def process_graphs(recording):
     recording.code5 = process_array(codes[4])
     recording.dists = process_array(codes[5])
     recording.n_targets = codes[6]
-    recording.date = datetime.datetime.now()
+    recording.date = timezone.now()
     recording.processed = True
     recording.save()
 

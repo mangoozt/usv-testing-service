@@ -200,6 +200,8 @@ class ReportGenerator:
                 dist2, course2, peleng2 = 0, 0, 0
 
             types, right = self.load_maneuver(maneuver_file, analyse_file)
+            if len(types) == 0:
+                types.append(None)
             if len(types) == 1:
                 types.append(None)
 
