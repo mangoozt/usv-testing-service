@@ -96,7 +96,8 @@ class ReportGenerator:
         logging.info('Testing in parallel')
         t0 = time.time()
         with Pool() as p:
-            cases = p.map(self.run_case, df_list)
+            cases_awt = p.imap_unordered(self.run_case, df_list)
+            cases = list(cases_awt)
         logging.info(f'Testing time: {time.time() - t0}')
         logging.info('Clean tmp')
         t0 = time.time()
@@ -206,6 +207,8 @@ class ReportGenerator:
                 types.append(None)
 
             os.chdir(working_dir)
+            if fix_returncode(completed_proc.returncode) not in (0, 1, 2, 3, 4, 5):
+                print(datadir, '\n', completed_proc.stdout, '\n', completed_proc.stderr)
             if usetmp:
                 shutil.rmtree(datadir)
             return {"datadir": datadir_i,
@@ -247,6 +250,7 @@ class ReportGenerator:
                 dist1, course1, peleng1 = self.get_target_params(lat, lon, target_data[0])
             except:
                 dist1, course1, peleng1 = 0, 0, 0
+
             try:
                 dist2, course2, peleng2 = self.get_target_params(lat, lon, target_data[1])
             except:
