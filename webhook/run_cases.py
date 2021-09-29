@@ -71,13 +71,15 @@ class ReportGenerator:
         self.cases = []
         self.work_dir = os.path.abspath(os.getcwd())
         self.tmpdir = None
-        self.rvo = None
+        self.extra_args = []
         self.nopic = None
         self.fast = False
 
-    def generate(self, data_directory, glob='*', rvo=None, nopic=False):
+    def generate(self, data_directory, glob='*', nopic=False, extra_arguments=None):
+        if extra_arguments is None:
+            extra_arguments = []
         self.tmpdir = tempfile.mkdtemp(prefix=os.path.join(os.getcwd(), 'tmp/'))
-        self.rvo = rvo
+        self.extra_args = extra_arguments
         self.nopic = nopic
 
         if not os.path.exists(data_directory + '/metainfo.csv'):
@@ -103,13 +105,7 @@ class ReportGenerator:
         t0 = time.time()
         shutil.rmtree(self.tmpdir)
         logging.info(f'Clean time: {time.time() - t0}')
-        return Report(cases, self.exe, self.work_dir, self.rvo)
-
-    def generate_for_list(self, case_list, nopic=False):
-        self.nopic = nopic
-        with Pool() as p:
-            cases = p.map(self.run_case, case_list)
-        return Report(cases, self.exe, self.work_dir, self.rvo)
+        return Report(cases, self.exe, self.work_dir, extra_arguments=self.extra_args)
 
     def run_case(self, df_case):
         working_dir = os.path.abspath(os.getcwd())
@@ -154,9 +150,7 @@ class ReportGenerator:
                    "--route", case_filenames['route'],
                    "--maneuver", maneuver_file,
                    "--analyse", analyse_file,
-                   "--predict", targets_maneuver_file,
-                   ("--rvo-enable" if self.rvo is True else "")]
-
+                   "--predict", targets_maneuver_file] + self.extra_args
         # Added to prevent freezing
         try:
             completed_proc = subprocess.run(command,
@@ -209,7 +203,7 @@ class ReportGenerator:
             os.chdir(working_dir)
             if fix_returncode(completed_proc.returncode) not in (0, 1, 2, 3, 4, 5):
                 print(datadir, '\n', completed_proc.stdout, '\n', completed_proc.stderr)
-            if usetmp:
+            elif usetmp:
                 shutil.rmtree(datadir)
             return {"datadir": datadir_i,
                     "exec_time": exec_time,
@@ -320,11 +314,13 @@ class ReportGenerator:
 
 class Report:
 
-    def __init__(self, cases, executable, work_dir, rvo):
+    def __init__(self, cases, executable, work_dir, extra_arguments=None):
+        if extra_arguments is None:
+            extra_arguments = []
         self.cases = cases
         self.exe = executable
         self.work_dir = work_dir
-        self.rvo = rvo
+        self.extra_args = extra_arguments
 
     def save_file(self, filename='report.xlsx'):
         df = pd.json_normalize(self.cases)
@@ -358,11 +354,13 @@ def test_usv_archived(archive, cases_dir, report_file=None, file_format='csv'):
     return result
 
 
-def test_usv(executable, cases_dir, report_file=None, file_format='csv'):
+def test_usv(executable, cases_dir, report_file=None, file_format='csv', extra_arguments=None):
+    if extra_arguments is None:
+        extra_arguments = []
     t0 = time.time()
     report = ReportGenerator(executable)
     logging.info("Starting converstion...")
-    report_out = report.generate(cases_dir)
+    report_out = report.generate(cases_dir, extra_arguments=extra_arguments)
     logging.info(f'Finished in {time.time() - t0} sec')
     t_save = time.time()
     if report_file is None:
@@ -384,11 +382,17 @@ if __name__ == "__main__":
 
     parser.add_argument("--working_dir", type=str, help="Path to USV executable")
     parser.add_argument("--report_file", type=str, help="Report file")
-    args = parser.parse_args()
+
+    args, extra_args = parser.parse_known_args()
+
+    if len(extra_args)>0 and extra_args[0] != "--":
+        extra_args=[]
+    else:
+        extra_args = extra_args[1:]
 
     if args.working_dir is not None:
         cur_dir = os.path.abspath(args.working_dir)
     else:
         cur_dir = os.path.abspath(os.getcwd())
     usv_executable = os.path.abspath(args.executable)
-    test_usv(usv_executable, cur_dir, args.report_file)
+    test_usv(usv_executable, cur_dir, args.report_file, extra_arguments=extra_args)
