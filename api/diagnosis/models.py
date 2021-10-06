@@ -46,8 +46,25 @@ class TestingRecording(models.Model):
         self.slug = slugify(self.title + ' ' + str(self.date) + str(self.n_targets) + uuid.uuid4().hex[:6].upper())
         super().save(*args, **kwargs)
         if not self.processed:
+            self.calc_num_scenars()
             process_graphs(self)
             create_sc_for_rec(self)
+
+    def calc_num_scenars(self):
+        df = load_df_from_rec(self)
+        self.f2f = len(df.loc[(df['type1'] == "Face to face") & (df['code'] == 0) & (df['code'] == 0)])
+        self.ovn = len(df.loc[(df['type1'] == "Overtaken") & (df['code'] == 0) & (df['code'] == 0)])
+        self.ov = len(df.loc[(df['type1'] == "Overtake") & (df['code'] == 0) & (df['code'] == 0)])
+        self.gw = len(df.loc[(df['type1'] == "Give way") & (df['code'] == 0) & (df['code'] == 0)])
+        self.sve = len(df.loc[(df['type1'] == "Save") & (df['code'] == 0) & (df['code'] == 0)])
+        self.gwp = len(df.loc[(df['type1'] == "Give way priority") & (df['code'] == 0) & (df['code'] == 0)])
+        self.sp = len(df.loc[(df['type1'] == "Save priority") & (df['code'] == 0) & (df['code'] == 0)])
+        self.cm = len(df.loc[(df['type1'] == "Cross move") & (df['code'] == 0) & (df['code'] == 0)])
+        self.ci = len(df.loc[(df['type1'] == "Cross in") & (df['code'] == 0) & (df['code'] == 0)])
+        self.vrf = len(df.loc[(df['type1'] == "Vision restricted forward") & (df['code'] == 0) & (df['code'] == 0)])
+        self.vrb = len(df.loc[(df['type1'] == "Vision restricted backward") & (df['code'] == 0) & (df['code'] == 0)])
+        self.processed = True
+        self.save()
 
     def to_dataframe(obj):
         def f(arr):
@@ -104,8 +121,13 @@ def process_graphs(recording):
     recording.save()
 
 
-@postpone
-def create_sc_for_rec(recording):
+def load_df_from_rec(recording):
+    """
+    Loads pandas df from recording stats file
+    @param recording:
+    @return:
+    """
+    df = None
     try:
         file_extension = recording.file.path.split('.')[-1]
         if file_extension == 'parquet':
@@ -116,6 +138,12 @@ def create_sc_for_rec(recording):
             df = pd.read_csv(recording.file.path)
     except ValueError:
         df = pd.read_csv(recording.file.path)
+    return df
+
+
+@postpone
+def create_sc_for_rec(recording):
+    df = load_df_from_rec(recording)
 
     i = 0
     for index, row in df.iterrows():
