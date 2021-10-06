@@ -45,17 +45,37 @@ def build_percent_diag(filename):
         elif n_targ == 2:
             return min(float(foldername2[1]), float(foldername2[2]))
 
-    df['dist'] = df['datadir'].apply(get_distance)
+    # df['dist'] = df['datadir'].apply(get_distance)
     n_targ = 2 if len(df.query('dist1!=0 & dist2 != 0')) else 1
+    if n_targ == 1:
+        df['dist'] = pd.concat([df['dist1'], df['dist2']], axis=1).max(axis=1)
+    else:
+        df['dist'] = pd.concat([df['dist1'], df['dist2']], axis=1).min(axis=1)
     a = pd.pivot_table(df, values='datadir', index=['dist'], columns=['code'], aggfunc='count', fill_value=0)
     asum = a.sum(axis=1)
     a = a.divide(asum, axis=0) * 100
     dists = list(a.index)
-    code0_p = list(a[0].values)
-    code1_p = list(a[1].values)
-    code2_p = list(a[2].values)
-    code4_p = list(a[4].values)
-    code5_p = list(a[5].values)
+    code0_p, code1_p, code2_p, code4_p, code5_p = [], [], [], [], []
+    try:
+        code0_p = list(a[0].values)
+    except KeyError:
+        code0_p = [0 for i in range(len(dists))]
+    try:
+        code1_p = list(a[1].values)
+    except KeyError:
+        code1_p = [0 for i in range(len(dists))]
+    try:
+        code2_p = list(a[2].values)
+    except KeyError:
+        code2_p = [0 for i in range(len(dists))]
+    try:
+        code4_p = list(a[4].values)
+    except KeyError:
+        code4_p = [0 for i in range(len(dists))]
+    try:
+        code5_p = list(a[5].values)
+    except KeyError:
+        code5_p = [0 for i in range(len(dists))]
     print(list(asum.values))
     return [code0_p, code1_p, code2_p, code4_p, code5_p, dists, n_targ, ]
 

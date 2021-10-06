@@ -47,9 +47,9 @@ class TestingRecording(models.Model):
         self.slug = slugify(self.title + ' ' + str(self.date) + str(self.n_targets) + uuid.uuid4().hex[:6].upper())
         super().save(*args, **kwargs)
         if not self.processed:
-            self.calc_num_scenars()
             process_graphs(self)
             create_sc_for_rec(self)
+            self.calc_num_scenars()
 
     def calc_num_scenars(self):
         df = load_df_from_rec(self)
@@ -107,7 +107,7 @@ class TestingRecording(models.Model):
         return self.title + '_' + str(self.date)
 
 
-@postpone
+# @postpone
 def process_graphs(recording):
     codes = build_percent_diag(recording.file.path)
     recording.code0 = process_array(codes[0])
@@ -153,6 +153,9 @@ def create_sc_for_rec(recording):
             scenario = Scenario.objects.get(name=os.path.split(row['datadir'])[1])
             obj = ScenarioResult()
             obj.scenario = scenario
+            if i < 3:
+                recording.sc_set = scenario.scenariosSet
+                recording.save()
             obj.pack = recording
             obj.code = row['code']
             obj.exec_time = row['exec_time']
