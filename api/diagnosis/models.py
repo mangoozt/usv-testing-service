@@ -41,6 +41,7 @@ class TestingRecording(models.Model):
     ci = models.IntegerField(default=0)
     vrf = models.IntegerField(default=0)
     vrb = models.IntegerField(default=0)
+    sc_set = models.ForeignKey("diagnosis.ScenariosSet", on_delete=models.CASCADE, blank=True, null=True)
 
     def save(self, *args, **kwargs):
         self.slug = slugify(self.title + ' ' + str(self.date) + str(self.n_targets) + uuid.uuid4().hex[:6].upper())
