@@ -14,8 +14,7 @@ class TestingRecordingAdmin(admin.ModelAdmin):
 
 
 class ScenarioAdmin(admin.ModelAdmin):
-    list_display = ('name', 'num_targets', 'dist1', 'dist2')
-    ordering = ['dist1']
+    list_display = ('name', 'num_targets')
     actions = [save_folder]
 
 

@@ -2,6 +2,7 @@ import os
 import uuid
 
 import pandas as pd
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.utils import timezone
 from django.utils.text import slugify
@@ -146,6 +147,18 @@ class ScenariosSet(models.Model):
     n_cases = models.IntegerField(default=0)
     metafile = models.FileField(upload_to='', blank=True)
     validation = models.BooleanField(default=False)
+    # Scenario types
+    f2f = models.IntegerField(default=0)
+    ovn = models.IntegerField(default=0)
+    ov = models.IntegerField(default=0)
+    gw = models.IntegerField(default=0)
+    sve = models.IntegerField(default=0)
+    gwp = models.IntegerField(default=0)
+    sp = models.IntegerField(default=0)
+    cm = models.IntegerField(default=0)
+    ci = models.IntegerField(default=0)
+    vrf = models.IntegerField(default=0)
+    vrb = models.IntegerField(default=0)
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -156,44 +169,52 @@ class ScenariosSet(models.Model):
             obj.name = os.path.split(name)[1]
             obj.scenariosSet = self
             obj.save()
+        self.f2f = len(df[df['type1'] == "Face to face"])
+        self.ovn = len(df[df['type1'] == "Overtaken"])
+        self.ov = len(df[df['type1'] == "Overtake"])
+        self.gw = len(df[df['type1'] == "Give way"])
+        self.sve = len(df[df['type1'] == "Save"])
+        self.gwp = len(df[df['type1'] == "Give way priority"])
+        self.sp = len(df[df['type1'] == "Save priority"])
+        self.cm = len(df[df['type1'] == "Cross move"])
+        self.ci = len(df[df['type1'] == "Cross in"])
+        self.vrf = len(df[df['type1'] == "Vision restricted forward"])
+        self.vrb = len(df[df['type1'] == "Vision restricted backward"])
         super().save(*args, **kwargs)
 
 
 class Scenario(models.Model):
     name = models.TextField(blank=True, default='', max_length=500)
     num_targets = models.IntegerField(default=1)
-    # TODO: rewrite dists, vels and other params to ArrayFields
-    dist1 = models.FloatField(default=0)
-    dist2 = models.FloatField(default=0)
-    vel1 = models.FloatField(default=0)
-    vel2 = models.FloatField(default=0)
+    dists = ArrayField(models.FloatField(), default=[0])
+    vels = ArrayField(models.FloatField(), default=[0])
     vel_our = models.FloatField(default=0)
-    course1 = models.FloatField(default=0)
-    course2 = models.FloatField(default=0)
-    peleng1 = models.FloatField(default=0)
-    peleng2 = models.FloatField(default=0)
+    courses = ArrayField(models.FloatField(), default=[0])
+    pelengs = ArrayField(models.FloatField(), default=[0])
     scenariosSet = models.ForeignKey(ScenariosSet, on_delete=models.CASCADE, default=1)
 
     def save(self, *args, **kwargs):
         try:
             super().save(*args, **kwargs)
             names = self.name.split(sep='_')
-            self.dist1 = names[1]
-            self.dist2 = names[2]
-            self.vel1 = names[3]
-            self.vel2 = names[4]
-            self.vel_our = names[5]
-            self.course1 = names[6]
-            self.course2 = names[7]
-            if self.vel2 == self.course2 == 0:
-                self.num_targets = 1
-            else:
-                self.num_targets = 2
+            # TODO: rewrite this shit to file reading
+            # self.dist1 = names[1]
+            # self.dist2 = names[2]
+            # self.vel1 = names[3]
+            # self.vel2 = names[4]
+            # self.vel_our = names[5]
+            # self.course1 = names[6]
+            # self.course2 = names[7]
+            # if self.vel2 == self.course2 == 0:
+            #     self.num_targets = 1
+            # else:
+            #     self.num_targets = 2
         except IndexError:
             pass
         super().save(*args, **kwargs)
 
     def generate_folder(self, foldername=None):
+        # TODO: rewrite this bullshit too
         gen = Generator(12, 3.5, 300, 1000, safe_div_dist=1, n_targets=1, foldername="./scenars_div1_1tar",
                         n_stack=1000)
         targets = []
