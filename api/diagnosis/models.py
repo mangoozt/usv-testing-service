@@ -162,6 +162,7 @@ class ScenariosSet(models.Model):
 class Scenario(models.Model):
     name = models.TextField(blank=True, default='', max_length=500)
     num_targets = models.IntegerField(default=1)
+    # TODO: rewrite dists, vels and other params to ArrayFields
     dist1 = models.FloatField(default=0)
     dist2 = models.FloatField(default=0)
     vel1 = models.FloatField(default=0)
