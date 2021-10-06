@@ -1,13 +1,12 @@
-import datetime
 import os
 import uuid
 
 import pandas as pd
-from autotest import settings
 from django.db import models
-from django.utils.text import slugify
 from django.utils import timezone
+from django.utils.text import slugify
 
+from autotest import settings
 from .build_graphs import build_percent_diag, plot_graph_normal, plot_minister_mode
 from .decorators import postpone
 from .generator import Generator
@@ -146,6 +145,7 @@ class ScenariosSet(models.Model):
     n_targets = models.IntegerField(default=1)
     n_cases = models.IntegerField(default=0)
     metafile = models.FileField(upload_to='', blank=True)
+    validation = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
