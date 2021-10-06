@@ -30,6 +30,17 @@ class TestingRecording(models.Model):
     processed = models.BooleanField(default=False)
     slug = models.SlugField(max_length=200, unique=True, default='')
     n_scenarios = models.IntegerField(default=0)
+    f2f = models.IntegerField(default=0)
+    ovn = models.IntegerField(default=0)
+    ov = models.IntegerField(default=0)
+    gw = models.IntegerField(default=0)
+    sve = models.IntegerField(default=0)
+    gwp = models.IntegerField(default=0)
+    sp = models.IntegerField(default=0)
+    cm = models.IntegerField(default=0)
+    ci = models.IntegerField(default=0)
+    vrf = models.IntegerField(default=0)
+    vrb = models.IntegerField(default=0)
 
     def save(self, *args, **kwargs):
         self.slug = slugify(self.title + ' ' + str(self.date) + str(self.n_targets) + uuid.uuid4().hex[:6].upper())
@@ -168,6 +179,8 @@ class ScenariosSet(models.Model):
             obj = Scenario()
             obj.name = os.path.split(name)[1]
             obj.scenariosSet = self
+            # TODO: Fix types
+            # obj.type = ...
             obj.save()
         self.f2f = len(df[df['type1'] == "Face to face"])
         self.ovn = len(df[df['type1'] == "Overtaken"])
@@ -183,6 +196,21 @@ class ScenariosSet(models.Model):
         super().save(*args, **kwargs)
 
 
+TSS = (
+    (0, "Face to face"),
+    (1, "Overtaken"),
+    (2, "Overtake"),
+    (3, "Give way"),
+    (4, "Save"),
+    (5, "Give way priority"),
+    (6, "Save priority"),
+    (7, "Cross move"),
+    (8, "Cross in"),
+    (9, "Vision restricted forward"),
+    (10, "Vision restricted backward")
+)
+
+
 class Scenario(models.Model):
     name = models.TextField(blank=True, default='', max_length=500)
     num_targets = models.IntegerField(default=1)
@@ -192,6 +220,7 @@ class Scenario(models.Model):
     courses = ArrayField(models.FloatField(), default=[0])
     pelengs = ArrayField(models.FloatField(), default=[0])
     scenariosSet = models.ForeignKey(ScenariosSet, on_delete=models.CASCADE, default=1)
+    type = models.IntegerField(choices=TSS, default=0)
 
     def save(self, *args, **kwargs):
         try:
