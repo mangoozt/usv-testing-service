@@ -41,7 +41,7 @@ def details(request, slug):
         try:
             percent_a.append(solv_tr[i] / solv_sc[i] * 100)
         except ZeroDivisionError:
-            percent_a.append(0)
+            percent_a.append(100)
     # TODO add stats
     rec = {"chart_data": json.dumps(list(chart_data), ensure_ascii=False),
            "date": str(obj.date),
