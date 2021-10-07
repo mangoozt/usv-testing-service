@@ -2,10 +2,11 @@ import datetime
 import io
 import json
 
-from matplotlib import pyplot as plt
 from django.http import HttpResponseRedirect, FileResponse
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
+from matplotlib import pyplot as plt
+
 from .forms import UploadFileForm, UploadMetaFileForm, ComparationForm
 from .models import TestingRecording, ScenariosSet
 
@@ -31,6 +32,7 @@ def details(request, slug):
 
     df = obj.to_dataframe().reset_index()
     chart_data = [df.columns.tolist()] + df.values.tolist()
+    # TODO add stats
     rec = {"chart_data": json.dumps(list(chart_data), ensure_ascii=False),
            "date": str(obj.date),
            "n_targ": obj.n_targets,
@@ -38,7 +40,11 @@ def details(request, slug):
            "n_sc": obj.n_scenarios,
            "statistics_file": obj.file,
            "img": reverse('testing_result_plot', kwargs={'slug': obj.slug}),
-           "img_min": reverse('testing_result_plot', kwargs={'slug': obj.slug, 'type': 'minister'})}
+           "img_min": reverse('testing_result_plot', kwargs={'slug': obj.slug, 'type': 'minister'}),
+           "solv_tr": [obj.f2f, obj.ovn, obj.ov, obj.gw, obj.sve, obj.gwp, obj.sp, obj.cm, obj.ci, obj.vrf, obj.vrb],
+           "solv_sc": [obj.sc_set.f2f, obj.sc_set.ovn, obj.sc_set.ov, obj.sc_set.gw,
+                       obj.sc_set.sve, obj.sc_set.gwp, obj.sc_set.sp, obj.sc_set.cm,
+                       obj.sc_set.ci, obj.sc_set.vrf, obj.sc_set.vrb]}
     return render(request, 'details.html', context=rec)
 
 
