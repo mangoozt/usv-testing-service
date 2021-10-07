@@ -32,6 +32,16 @@ def details(request, slug):
 
     df = obj.to_dataframe().reset_index()
     chart_data = [df.columns.tolist()] + df.values.tolist()
+    percent_a = []
+    solv_tr = [obj.f2f, obj.ovn, obj.ov, obj.gw, obj.sve, obj.gwp, obj.sp, obj.cm, obj.ci, obj.vrf, obj.vrb]
+    solv_sc = [obj.sc_set.f2f, obj.sc_set.ovn, obj.sc_set.ov, obj.sc_set.gw,
+               obj.sc_set.sve, obj.sc_set.gwp, obj.sc_set.sp, obj.sc_set.cm,
+               obj.sc_set.ci, obj.sc_set.vrf, obj.sc_set.vrb]
+    for i in range(len(solv_tr)):
+        try:
+            percent_a.append(solv_tr[i] / solv_sc[i] * 100)
+        except ZeroDivisionError:
+            percent_a.append(0)
     # TODO add stats
     rec = {"chart_data": json.dumps(list(chart_data), ensure_ascii=False),
            "date": str(obj.date),
@@ -41,10 +51,8 @@ def details(request, slug):
            "statistics_file": obj.file,
            "img": reverse('testing_result_plot', kwargs={'slug': obj.slug}),
            "img_min": reverse('testing_result_plot', kwargs={'slug': obj.slug, 'type': 'minister'}),
-           "solv_tr": [obj.f2f, obj.ovn, obj.ov, obj.gw, obj.sve, obj.gwp, obj.sp, obj.cm, obj.ci, obj.vrf, obj.vrb],
-           "solv_sc": [obj.sc_set.f2f, obj.sc_set.ovn, obj.sc_set.ov, obj.sc_set.gw,
-                       obj.sc_set.sve, obj.sc_set.gwp, obj.sc_set.sp, obj.sc_set.cm,
-                       obj.sc_set.ci, obj.sc_set.vrf, obj.sc_set.vrb]}
+           "solv_tr": solv_tr,
+           "percent": percent_a}
     return render(request, 'details.html', context=rec)
 
 
