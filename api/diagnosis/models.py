@@ -14,7 +14,7 @@ from .generator import Generator
 
 
 class TestingRecording(models.Model):
-    date = models.DateTimeField(default=timezone.now())
+    date = models.DateTimeField(default=timezone.now)
     file = models.FileField(upload_to='')
     title = models.TextField(default="", max_length=1000)
     commit_sha1 = models.TextField(default="", max_length=40)
@@ -246,11 +246,11 @@ TSS = (
 class Scenario(models.Model):
     name = models.TextField(blank=True, default='', max_length=500)
     num_targets = models.IntegerField(default=1)
-    dists = ArrayField(models.FloatField(), default=[0])
-    vels = ArrayField(models.FloatField(), default=[0])
+    dists = ArrayField(models.FloatField(), default=list)
+    vels = ArrayField(models.FloatField(), default=list)
     vel_our = models.FloatField(default=0)
-    courses = ArrayField(models.FloatField(), default=[0])
-    pelengs = ArrayField(models.FloatField(), default=[0])
+    courses = ArrayField(models.FloatField(), default=list)
+    pelengs = ArrayField(models.FloatField(), default=list)
     scenariosSet = models.ForeignKey(ScenariosSet, on_delete=models.CASCADE, default=1)
     type = models.IntegerField(choices=TSS, default=0)
 
