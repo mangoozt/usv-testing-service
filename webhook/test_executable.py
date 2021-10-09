@@ -45,11 +45,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="USV executable cases test utility")
     parser.add_argument("executable", type=str, help="Path to USV executable")
-    parser.add_argument("url", type=str, help="Url for results uploading", required=False, default=None)
-    parser.add_argument("title", type=str, help="Title to pass to dashboard", required=False, default=None)
-    parser.add_argument("sha1", type=str, help="Commit sha1", required=False, default='')
-    parser.add_argument("datetime", type=str, help="Commit datetime", required=False, default='')
-    parser.add_argument("build", type=str, help="Build number", required=False, default='')
+    parser.add_argument("--url", type=str, help="Url for results uploading", required=False, default='')
+    parser.add_argument("--title", type=str, help="Title to pass to dashboard", required=False, default='')
+    parser.add_argument("--sha1", type=str, help="Commit sha1", required=False, default='')
+    parser.add_argument("--datetime", type=str, help="Commit datetime", required=False, default='')
+    parser.add_argument("--build", type=str, help="Build number", required=False, default='')
 
     args, extra_args = parser.parse_known_args()
 
@@ -60,7 +60,7 @@ if __name__ == "__main__":
 
     usv_executable = os.path.abspath(args.executable)
     report_file = test_executable(usv_executable, extra_arguments=extra_args)
-    if args.url is not None and args.title is not None:
+    if len(args.url) > 0 and len(args.title) > 0:
         logging.info(f'Sending report file: `{report_file}`')
         upload_results(args.url, report_file, title=args.title, commit_sha1=args.sha1, commit_date=args.datetime,
                        build_number=args.build)
