@@ -5,9 +5,8 @@ from .models import TestingRecording
 
 class UploadFileForm(forms.Form):
     title = forms.CharField(max_length=500)
-    commit_sha1 = forms.CharField(max_length=40)
-    commit_date = forms.CharField(max_length=500)
-    build_number = forms.CharField(max_length=20)
+    commit_sha1 = forms.CharField(max_length=40, required=False)
+    build_number = forms.CharField(max_length=20, required=False)
     file = forms.FileField()
 
 
