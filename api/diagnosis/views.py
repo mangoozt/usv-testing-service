@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 
 from .forms import UploadFileForm, UploadMetaFileForm, ComparationForm
 from .models import TestingRecording, ScenariosSet
-
+import iso8601
 
 def main_view(request):
     """
@@ -75,6 +75,9 @@ def upload_file(request):
             obj.date = datetime.datetime.now()
             obj.file = form.cleaned_data['file']
             obj.title = form.cleaned_data['title']
+            obj.commit_sha1 = form.cleaned_data['commit_sha1']
+            obj.commit_date = iso8601.parse_date(form.cleaned_data['commit_date'])
+            obj.build_number = form.cleaned_data['build_number']
             obj.save()
             return HttpResponseRedirect(reverse('main'))
     else:
