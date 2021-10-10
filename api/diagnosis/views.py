@@ -23,7 +23,8 @@ def main_view(request):
         s_rec.append({"date": str(rec.date),
                       "n_targ": rec.n_targets,
                       "title": rec.title,
-                      "slug": rec.slug})
+                      "slug": rec.slug,
+                      "sha1": rec.commit_sha1})
     return render(request, 'main.html', context={'data': s_rec})
 
 
@@ -53,7 +54,8 @@ def details(request, slug):
            "img": reverse('testing_result_plot', kwargs={'slug': obj.slug}),
            "img_min": reverse('testing_result_plot', kwargs={'slug': obj.slug, 'type': 'minister'}),
            "solv_tr": solv_tr,
-           "percent": percent_a}
+           "percent": percent_a,
+           "sha1": obj.commit_sha1}
     return render(request, 'details.html', context=rec)
 
 
