@@ -32,22 +32,6 @@ services:
       - 8000
     restart: "always"
 
-  webhook:
-      #      python manage.py makemigrations &&
-    build: ./webhook
-    command: sh -c "gunicorn wsgi:app --bind=0.0.0.0:8000"
-    volumes:
-      - ./data/cases:/code/cases:ro
-      - ./data/reports:/code/reports:rw
-#      - ./static:/code/static:rw
-    env_file:
-      - ./local.env
-    tmpfs:
-      - /code/tmp
-    expose:
-      - 8000
-    restart: "always"
-
   db:
     image: postgres
     restart: always
