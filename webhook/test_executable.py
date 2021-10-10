@@ -24,7 +24,7 @@ def upload_results(url, report_file, title, commit_sha1='', commit_date='', buil
 
     values['csrfmiddlewaretoken'] = csrfmiddlewaretoken_re.search(r.text).group(1)
 
-    r = s.post('http://nginx/upload/', files=files, data=values)
+    r = s.post(url, files=files, data=values)
 
     logging.info(f'Response code: {r.status_code}')
 
