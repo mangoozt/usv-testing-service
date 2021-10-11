@@ -43,7 +43,7 @@
             <div class="collection with-header">
 
                 {% for rec in data %}
-                    <a class="collection-item" href="{{ rec.slug }}">{{ rec.sha1[:7] if len(rec.sha1) > 7 else rec.sha1 }} - {{ rec.title }}</a>
+                    <a class="collection-item" href="{{ rec.slug }}">{{ rec.title }}</a>
                 {% endfor %}
             </div>
         </div>

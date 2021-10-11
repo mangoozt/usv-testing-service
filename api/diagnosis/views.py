@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 
 from .forms import UploadFileForm, UploadMetaFileForm, ComparationForm
 from .models import TestingRecording, ScenariosSet
-import iso8601
+
 
 def main_view(request):
     """
@@ -20,11 +20,14 @@ def main_view(request):
     recordings = TestingRecording.objects.filter(processed=True).order_by('-pk')
     s_rec = []
     for rec in recordings:
+        title = rec.title
+        if rec.commit_sha1:
+            title = (rec.commit_sha1[:7] if len(rec.commit_sha1) > 7 else rec.commit_sha1) + ' - ' + title
         s_rec.append({"date": str(rec.date),
                       "n_targ": rec.n_targets,
-                      "title": rec.title,
+                      "title": title,
                       "slug": rec.slug,
-                      "sha1": rec.commit_sha1})
+                      })
     return render(request, 'main.html', context={'data': s_rec})
 
 
@@ -59,9 +62,9 @@ def details(request, slug):
     return render(request, 'details.html', context=rec)
 
 
-def testing_result_plot(request, slug, type='normal'):
+def testing_result_plot(request, slug, graph_type='normal'):
     obj = get_object_or_404(TestingRecording, slug=slug)
-    fig: plt.Figure = obj.gen_plot(type)
+    fig: plt.Figure = obj.gen_plot(graph_type)
     buf = io.BytesIO()
     fig.savefig(buf, format='png')
     buf.seek(0)

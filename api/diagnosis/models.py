@@ -7,10 +7,8 @@ from django.db import models
 from django.utils import timezone
 from django.utils.text import slugify
 
-from autotest import settings
 from .build_graphs import build_percent_diag, plot_graph_normal, plot_minister_mode
 from .decorators import postpone
-from .generator import Generator
 
 
 class TestingRecording(models.Model):
@@ -42,7 +40,7 @@ class TestingRecording(models.Model):
     ci = models.IntegerField(default=0)
     vrf = models.IntegerField(default=0)
     vrb = models.IntegerField(default=0)
-    sc_set = models.ForeignKey("diagnosis.ScenariosSet", on_delete=models.CASCADE, blank=True, null=True)
+    sc_set = models.ForeignKey("ScenariosSet", on_delete=models.CASCADE, blank=True, null=True)
 
     def save(self, *args, **kwargs):
         self.slug = slugify(self.title + ' ' + str(self.date) + str(self.n_targets) + uuid.uuid4().hex[:6].upper())
@@ -68,12 +66,12 @@ class TestingRecording(models.Model):
         self.processed = True
         self.save()
 
-    def to_dataframe(obj):
+    def to_dataframe(self):
         def f(arr):
             return [float(a) for a in arr.split(sep='::')]
 
         return pd.DataFrame(
-            data=list(zip(f(obj.dists), f(obj.code0), f(obj.code1), f(obj.code2), f(obj.code4), f(obj.code5))),
+            data=list(zip(f(self.dists), f(self.code0), f(self.code1), f(self.code2), f(self.code4), f(self.code5))),
             columns=('Дистанция', 'Код 0', 'Код 1', 'Код 2', 'Код 4', 'Код 5')).set_index('Дистанция')
 
     def compare(self, previous):
@@ -91,13 +89,13 @@ class TestingRecording(models.Model):
 
         return result
 
-    def gen_plot(self, type='normal'):
+    def gen_plot(self, graph_type='normal'):
         """
         Строит график по статистике записи тестирования
-        @param type: Тип графика: 'normal' или 'minister'
+        @param graph_type: Тип графика: 'normal' или 'minister'
         @return: График
         """
-        if type == 'minister':
+        if graph_type == 'minister':
             return plot_minister_mode(self.to_dataframe(),
                                       title=f"Дата`{self.date}`. Целей: {self.n_targets}")
         else:
@@ -129,7 +127,6 @@ def load_df_from_rec(recording):
     @param recording:
     @return:
     """
-    df = None
     try:
         file_extension = recording.file.path.split('.')[-1]
         if file_extension == 'parquet':
@@ -258,7 +255,6 @@ class Scenario(models.Model):
     def save(self, *args, **kwargs):
         try:
             super().save(*args, **kwargs)
-            names = self.name.split(sep='_')
             # TODO: rewrite this shit to file reading
             # self.dist1 = names[1]
             # self.dist2 = names[2]
@@ -274,28 +270,6 @@ class Scenario(models.Model):
         except IndexError:
             pass
         super().save(*args, **kwargs)
-
-    def generate_folder(self, foldername=None):
-        # TODO: rewrite this bullshit too
-        gen = Generator(12, 3.5, 300, 1000, safe_div_dist=1, n_targets=1, foldername="./scenars_div1_1tar",
-                        n_stack=1000)
-        targets = []
-        if self.dist1 != 0:
-            targets.append({"course": self.course1,
-                            "dist": self.dist1,
-                            "c_diff": self.course1,
-                            "v_our": self.vel_our,
-                            "v_target": self.vel1})
-        if self.dist2 != 0:
-            targets.append({"course": self.course2,
-                            "dist": self.dist2,
-                            "c_diff": self.course2,
-                            "v_our": self.vel_our,
-                            "v_target": self.vel2})
-        f_name = ("./sc_" + str(targets[0]['dist']) + str(self.pk))
-        os.chdir(settings.BASE_DIR)
-        gen.our_vel = self.vel_our
-        gen.construct_files(f_name, targets)
 
 
 STATUS = (
