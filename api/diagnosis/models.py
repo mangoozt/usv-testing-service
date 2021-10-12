@@ -1,6 +1,7 @@
 import os
 import uuid
 
+import iso8601
 import pandas as pd
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
@@ -9,6 +10,7 @@ from django.utils.text import slugify
 
 from .build_graphs import build_percent_diag, plot_graph_normal, plot_minister_mode
 from .decorators import postpone
+from .gitgub_utils import get_commit
 
 
 class TestingRecording(models.Model):
@@ -46,11 +48,22 @@ class TestingRecording(models.Model):
         self.slug = slugify(self.title + ' ' + str(self.date) + str(self.n_targets) + uuid.uuid4().hex[:6].upper())
         super().save(*args, **kwargs)
         if not self.processed:
+            self.process_sha1()
             process_graphs(self)
             create_sc_for_rec(self)
             self.calc_num_scenars()
             self.processed = True
             self.save()
+
+    def process_sha1(self):
+        if self.commit_sha1 and not self.title:
+            commit = get_commit(repo_url=os.getenv('GITHUB_REPO_URL'), commit_sha1=self.commit_sha1,
+                                token=os.getenv('GITHUB_TOKEN'))
+            if commit is not None:
+                self.title = commit['commit']['message']
+                self.commit_date = iso8601.parse_date(commit['commit']['author']['date'])
+            else:
+                self.title = "Couldn't retrieve commit message"
 
     def calc_num_scenars(self):
         df = load_df_from_rec(self)
