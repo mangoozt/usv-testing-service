@@ -60,7 +60,7 @@ if __name__ == "__main__":
 
     usv_executable = os.path.abspath(args.executable)
     report_file = test_executable(usv_executable, extra_arguments=extra_args)
-    if len(args.url) > 0 and len(args.title) > 0:
+    if len(args.url) > 0:
         logging.info(f'Sending report file: `{report_file}`')
         upload_results(args.url, report_file, title=args.title, commit_sha1=args.sha1, commit_date=args.datetime,
                        build_number=args.build)
