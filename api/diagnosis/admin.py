@@ -3,8 +3,17 @@ from django.contrib import admin
 from .models import TestingRecording, Scenario, ScenariosSet
 
 
+@admin.action(description='Recalculate statistics from file')
+def recalculate_statistics(modeladmin, request, queryset):
+    for o in queryset:
+        if o.file.storage.exists(o.file.name):
+            o.processed=False
+            o.save()
+
+
 class TestingRecordingAdmin(admin.ModelAdmin):
-    list_display = ('date', 'file')
+    list_display = ('date', 'title', 'commit_sha1', 'file')
+    actions = [recalculate_statistics]
 
 
 class ScenarioAdmin(admin.ModelAdmin):
