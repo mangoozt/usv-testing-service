@@ -49,6 +49,8 @@ class TestingRecording(models.Model):
             process_graphs(self)
             create_sc_for_rec(self)
             self.calc_num_scenars()
+            self.processed = True
+            self.save()
 
     def calc_num_scenars(self):
         df = load_df_from_rec(self)
@@ -63,8 +65,6 @@ class TestingRecording(models.Model):
         self.ci = len(df.loc[(df['type1'] == "Cross in") & (df['code'] == 0) & (df['code'] == 0)])
         self.vrf = len(df.loc[(df['type1'] == "Vision restricted forward") & (df['code'] == 0) & (df['code'] == 0)])
         self.vrb = len(df.loc[(df['type1'] == "Vision restricted backward") & (df['code'] == 0) & (df['code'] == 0)])
-        self.processed = True
-        self.save()
 
     def to_dataframe(self):
         def f(arr):

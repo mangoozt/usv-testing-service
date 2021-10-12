@@ -45,12 +45,9 @@ def build_percent_diag(filename):
         elif n_targ == 2:
             return min(float(foldername2[1]), float(foldername2[2]))
 
-    # df['dist'] = df['datadir'].apply(get_distance)
+    df['dist'] = df['datadir'].apply(get_distance)
     n_targ = 2 if len(df.query('dist1!=0 & dist2 != 0')) else 1
-    if n_targ == 1:
-        df['dist'] = pd.concat([df['dist1'], df['dist2']], axis=1).max(axis=1)
-    else:
-        df['dist'] = pd.concat([df['dist1'], df['dist2']], axis=1).min(axis=1)
+
     a = pd.pivot_table(df, values='datadir', index=['dist'], columns=['code'], aggfunc='count', fill_value=0)
     asum = a.sum(axis=1)
     a = a.divide(asum, axis=0) * 100
