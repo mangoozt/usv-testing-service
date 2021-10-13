@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import ctypes
 import json
+import logging
 import os
 import shutil
 import subprocess
@@ -9,9 +10,9 @@ import time
 from datetime import date
 from multiprocessing import Pool
 from pathlib import Path
+
 import pandas as pd
 from geographiclib.geodesic import Geodesic
-import logging
 
 from generator import Generator, generate_metadata
 
@@ -40,6 +41,18 @@ CASE_FILENAMES_KT = {'nav_data': 'navigation.json',
                      'route': 'route.json',
                      'settings': 'settings.json',
                      'hydrometeo': 'hydrometeo.json'}
+
+CASE_FILENAMES_VSE = {'nav_data': 'nav-data.json',
+                      'maneuvers': 'maneuver.json',
+                      'targets_data': 'targets.json',
+                      'target_settings': 'target-settings.json',
+                      'targets_maneuvers': 'predict.json',
+                      'targets_real': 'real-target-maneuvers.json',
+                      'analyse': 'analyse.json',
+                      'constraints': 'constraints.json',
+                      'route': 'route.json',
+                      'settings': 'settings.json',
+                      'hydrometeo': 'hydrometeo.json'}
 
 
 def fix_returncode(code):
@@ -120,7 +133,9 @@ class ReportGenerator:
 
         os.chdir(datadir)
 
-        if os.path.exists(CASE_FILENAMES['nav_data']):
+        if os.path.exists('nav-data.json'):
+            case_filenames = CASE_FILENAMES_VSE
+        elif os.path.exists(CASE_FILENAMES['nav_data']):
             case_filenames = CASE_FILENAMES
         else:
             case_filenames = CASE_FILENAMES_KT
@@ -160,27 +175,33 @@ class ReportGenerator:
             # print("{} .Return code: {}. Exec time: {} sec".format(datadir, fix_returncode(completed_proc.returncode),
             #                                                       exec_time))
 
+            image_data = ""
             nav_report = ""
             target_data = None
+
             try:
-                with open(analyse_file, "r") as f:
+                with open(case_filenames['analyse'], "r") as f:
                     nav_report = json.dumps(json.loads(f.read()), indent=4, sort_keys=True)
             except FileNotFoundError:
                 pass
             try:
-                with open("target-data.json", "r") as f:
+                with open(case_filenames['targets_data'], "r") as f:
                     target_data = json.dumps(json.loads(f.read()), indent=4, sort_keys=True)
             except FileNotFoundError:
                 pass
+            os.chdir(working_dir)
 
             try:
                 target_data = json.loads(target_data)
             except:
                 return
             datadir_i = os.path.split(datadir)[1]
+            dist1, dist2 = 0, 0
+            course1, course2 = 0, 0
+            peleng1, peleng2 = 0, 0
             lat, lon = 0, 0
             try:
-                with open(datadir + "/nav-data.json", "r") as f:
+                with open(datadir + "/" + case_filenames['nav_data'], "r") as f:
                     nav_d = json.loads(f.read())
                     lat, lon = nav_d['lat'], nav_d['lon']
             except FileNotFoundError:
@@ -194,18 +215,13 @@ class ReportGenerator:
             except IndexError or TypeError:
                 dist2, course2, peleng2 = 0, 0, 0
 
-            types, right = self.load_maneuver(maneuver_file, analyse_file)
-            if len(types) == 0:
-                types.append(None)
+            types, right = self.load_maneuver(datadir, case_filenames)
             if len(types) == 1:
                 types.append(None)
 
-            os.chdir(working_dir)
-            if fix_returncode(completed_proc.returncode) not in (0, 1, 2, 3, 4, 5):
-                print(datadir, '\n', completed_proc.stdout, '\n', completed_proc.stderr)
-            elif usetmp:
-                shutil.rmtree(datadir)
             return {"datadir": datadir_i,
+                    "proc": completed_proc,
+                    "image_data": image_data,
                     "exec_time": exec_time,
                     "nav_report": nav_report,
                     "command": command,
@@ -222,20 +238,23 @@ class ReportGenerator:
                     }
 
         except subprocess.TimeoutExpired:
-            logging.warning("TEST TIMEOUT ERR: " + datadir)
+            print("TEST TIMEOUT ERR")
             exec_time = time.time() - exec_time
-
+            os.chdir(working_dir)
             target_data = None
             try:
-                with open("target-data.json", "r") as f:
+                with open(case_filenames['targets_data'], "r") as f:
                     target_data = json.dumps(json.loads(f.read()), indent=4, sort_keys=True)
             except FileNotFoundError:
                 pass
 
             datadir_i = os.path.split(datadir)[1]
+            dist1, dist2 = 0, 0
+            course1, course2 = 0, 0
+            peleng1, peleng2 = 0, 0
             lat, lon = 0, 0
             try:
-                with open(datadir + "/nav-data.json", "r") as f:
+                with open(datadir + "/" + case_filenames['nav_data'], "r") as f:
                     nav_d = json.loads(f.read())
                     lat, lon = nav_d['lat'], nav_d['lon']
             except FileNotFoundError:
@@ -244,16 +263,16 @@ class ReportGenerator:
                 dist1, course1, peleng1 = self.get_target_params(lat, lon, target_data[0])
             except:
                 dist1, course1, peleng1 = 0, 0, 0
-
             try:
                 dist2, course2, peleng2 = self.get_target_params(lat, lon, target_data[1])
             except:
                 dist2, course2, peleng2 = 0, 0, 0
 
-            os.chdir(working_dir)
-            if usetmp:
-                shutil.rmtree(datadir)
+            # TODO: Rewrite pelengs and dists to arrays
+
             return {"datadir": datadir_i,
+                    "proc": None,
+                    "image_data": "",
                     "exec_time": exec_time,
                     "nav_report": None,
                     "command": command,
@@ -385,8 +404,8 @@ if __name__ == "__main__":
 
     args, extra_args = parser.parse_known_args()
 
-    if len(extra_args)>0 and extra_args[0] != "--":
-        extra_args=[]
+    if len(extra_args) > 0 and extra_args[0] != "--":
+        extra_args = []
     else:
         extra_args = extra_args[1:]
 
