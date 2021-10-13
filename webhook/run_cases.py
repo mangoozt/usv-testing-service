@@ -41,6 +41,18 @@ CASE_FILENAMES_KT = {'nav_data': 'navigation.json',
                      'settings': 'settings.json',
                      'hydrometeo': 'hydrometeo.json'}
 
+CASE_FILENAMES_VSE = {'nav_data': 'nav-data.json',
+                      'maneuvers': 'maneuver.json',
+                      'targets_data': 'targets.json',
+                      'target_settings': 'target-settings.json',
+                      'targets_maneuvers': 'predict.json',
+                      'targets_real': 'real-target-maneuvers.json',
+                      'analyse': 'analyse.json',
+                      'constraints': 'constraints.json',
+                      'route': 'route.json',
+                      'settings': 'settings.json',
+                      'hydrometeo': 'hydrometeo.json'}
+
 
 def fix_returncode(code):
     return ctypes.c_int32(code).value
@@ -72,15 +84,13 @@ class ReportGenerator:
         self.work_dir = os.path.abspath(os.getcwd())
         self.tmpdir = None
         self.extra_args = []
-        self.nopic = None
         self.fast = False
 
-    def generate(self, data_directory, glob='*', nopic=False, extra_arguments=None):
+    def generate(self, data_directory, extra_arguments=None):
         if extra_arguments is None:
             extra_arguments = []
         self.tmpdir = tempfile.mkdtemp(prefix=os.path.join(os.getcwd(), 'tmp/'))
         self.extra_args = extra_arguments
-        self.nopic = nopic
 
         if not os.path.exists(data_directory + '/metainfo.csv'):
             _df = generate_metadata(data_directory)
@@ -120,10 +130,13 @@ class ReportGenerator:
 
         os.chdir(datadir)
 
-        if os.path.exists(CASE_FILENAMES['nav_data']):
-            case_filenames = CASE_FILENAMES
-        else:
+        if os.path.exists('nav-data.json') & os.path.exists('targets.json'):
+            case_filenames = CASE_FILENAMES_VSE
+        elif os.path.exists("navigation.json"):
             case_filenames = CASE_FILENAMES_KT
+        else:
+            case_filenames = CASE_FILENAMES
+
         # Get a list of old results
         cur_path = Path('.')
         file_list = list(cur_path.glob(case_filenames['maneuvers'])) + list(cur_path.glob(case_filenames['analyse']))
@@ -168,7 +181,7 @@ class ReportGenerator:
             except FileNotFoundError:
                 pass
             try:
-                with open("target-data.json", "r") as f:
+                with open(case_filenames['targets_data'], "r") as f:
                     target_data = json.dumps(json.loads(f.read()), indent=4, sort_keys=True)
             except FileNotFoundError:
                 pass
@@ -322,9 +335,17 @@ class Report:
         self.work_dir = work_dir
         self.extra_args = extra_arguments
 
-    def save_file(self, filename='report.xlsx'):
+    def get_dataframe(self):
         df = pd.json_normalize(self.cases)
-        df.drop(columns=['command', 'nav_report'], inplace=True)
+        try:
+            df.drop(columns=['command', 'nav_report'], inplace=True)
+        except KeyError:
+            pass
+        return df
+
+    def save_file(self, filename='report.xlsx'):
+        df = self.get_dataframe()
+
         try:
             file_extension = filename.split('.')[-1]
             if file_extension == 'parquet':
@@ -340,7 +361,7 @@ class Report:
         return [rec['datadir'] for rec in self.cases if rec['code'] in statuses]
 
 
-def test_usv_archived(archive, cases_dir, report_file=None, file_format='csv'):
+def test_usv_archived(archive, cases_dir, report_file=None):
     import zipfile
     tmpdir = tempfile.mkdtemp(prefix=os.getcwd() + '/')
     with zipfile.ZipFile(archive, 'r') as zip_ref:
@@ -349,28 +370,20 @@ def test_usv_archived(archive, cases_dir, report_file=None, file_format='csv'):
     result = None
     if os.path.exists(executable):
         os.chmod(executable, 0o777)
-        result = test_usv(executable, cases_dir, report_file, file_format=file_format)
+        result = test_usv(executable, cases_dir, report_file)
     shutil.rmtree(tmpdir)
     return result
 
 
-def test_usv(executable, cases_dir, report_file=None, file_format='csv', extra_arguments=None):
+def test_usv(executable, cases_dir, extra_arguments=None):
     if extra_arguments is None:
         extra_arguments = []
-    t0 = time.time()
-    report = ReportGenerator(executable)
-    logging.info("Starting converstion...")
-    report_out = report.generate(cases_dir, extra_arguments=extra_arguments)
-    logging.info(f'Finished in {time.time() - t0} sec')
-    t_save = time.time()
-    if report_file is None:
-        report_file = os.path.join(cases_dir, "report1_" + str(date.today()) + "." + file_format)
 
-    logging.info(f"Starting saving report to '{report_file}'")
-    report_out.save_file(report_file)
-    logging.info(f'Save time: {time.time() - t_save}')
-    logging.info(f'Total time: {time.time() - t0}')
-    return report_file
+    report = ReportGenerator(executable)
+
+    report_out = report.generate(cases_dir, extra_arguments=extra_arguments)
+
+    return report_out
 
 
 if __name__ == "__main__":
@@ -378,15 +391,17 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="BKS report generator")
     parser.add_argument("executable", type=str, help="Path to USV executable")
-    parser.add_argument("--glob", type=str, default='*', help="Pattern for scanned directories")
+    parser.add_argument("--print_result", dest='print_result', action='store_true', help="Verbose cases output")
+    parser.add_argument("--noreport", dest='noreport', action='store_true', help="Skip report saving")
+    parser.add_argument("--failcode", dest='failcode', action='store_true', help="Non-zero code on failure")
 
     parser.add_argument("--working_dir", type=str, help="Path to USV executable")
     parser.add_argument("--report_file", type=str, help="Report file")
 
     args, extra_args = parser.parse_known_args()
 
-    if len(extra_args)>0 and extra_args[0] != "--":
-        extra_args=[]
+    if len(extra_args) > 0 and extra_args[0] != "--":
+        extra_args = []
     else:
         extra_args = extra_args[1:]
 
@@ -395,4 +410,31 @@ if __name__ == "__main__":
     else:
         cur_dir = os.path.abspath(os.getcwd())
     usv_executable = os.path.abspath(args.executable)
-    test_usv(usv_executable, cur_dir, args.report_file, extra_arguments=extra_args)
+
+    logging.info("Start running cases...")
+    t0 = time.time()
+    report_out = test_usv(usv_executable, cur_dir, extra_arguments=extra_args)
+
+    logging.info(f'Finished in {time.time() - t0} sec')
+    t_save = time.time()
+    if not args.noreport:
+        if args.report_file is None:
+            report_file = os.path.join(cur_dir, f"report1_{date.today()}.csv")
+        else:
+            report_file = args.report_file
+
+        logging.info(f"Start saving report to '{report_file}'")
+        report_out.save_file(report_file)
+
+    exitcode = 0
+    if args.print_result or args.failcode:
+        df = report_out.get_dataframe()
+        if args.print_result:
+            if len(df) > 0:
+                print(df[['exec_time', 'datadir', 'code']])
+        if args.failcode and not df['code'].between(0, 1).all():
+            exitcode = 2
+
+    logging.info(f'Save time: {time.time() - t_save}')
+    logging.info(f'Total time: {time.time() - t0}')
+    exit(exitcode)
