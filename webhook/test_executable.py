@@ -2,6 +2,7 @@ import datetime
 import logging
 import os
 import re
+import time
 
 import requests
 
@@ -12,8 +13,8 @@ logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 csrfmiddlewaretoken_re = re.compile('<input type="hidden" name="csrfmiddlewaretoken" value="([^"]+)">')
 
 
-def upload_results(url, report_file, title, commit_sha1='', commit_date='', build_number=''):
-    files = {'file': open(report_file, 'rb')}
+def upload_results(url, report_filename, title, commit_sha1='', commit_date='', build_number=''):
+    files = {'file': open(report_filename, 'rb')}
     values = {'title': title,
               'commit_sha1': commit_sha1,
               'commit_date': commit_date,
@@ -32,12 +33,15 @@ def upload_results(url, report_file, title, commit_sha1='', commit_date='', buil
 def test_executable(executable, extra_arguments=None):
     if extra_arguments is None:
         extra_arguments = []
-    logging.info("Got artifact")
 
-    report_file = os.path.join('./reports', "report_" + str(datetime.datetime.now()) + ".parquet")
-    report_file = test_usv(executable, './cases', report_file=report_file, file_format='parquet',
-                           extra_arguments=extra_arguments)
-    return report_file
+    report_filename = os.path.join('./reports', "report_" + str(datetime.datetime.now()) + ".parquet")
+
+    report = test_usv(executable, './cases', extra_arguments=extra_arguments)
+    logging.info(f"Start saving report to '{report_filename}'")
+    t_save = time.time()
+    report.save_file(report_filename)
+    logging.info(f'Save time: {time.time() - t_save}')
+    return report_filename
 
 
 if __name__ == "__main__":

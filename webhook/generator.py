@@ -49,10 +49,10 @@ class Frame:
 
 def det(a, b):
     """
-    Pseudoscalar multiply of vectors
+    Pseudo-scalar multiply of vectors
     :param a: 2D vector
     :param b: 2D vector
-    :return: pseudoscalar multiply
+    :return: pseudo-scalar multiply
     """
     return a.x * b.y - b.x * a.y
 
@@ -95,6 +95,18 @@ CASE_FILENAMES_KT = {'nav_data': 'navigation.json',
                      'settings': 'settings.json',
                      'hydrometeo': 'hydrometeo.json'}
 
+CASE_FILENAMES_VSE = {'nav_data': 'nav-data.json',
+                      'maneuvers': 'maneuver.json',
+                      'targets_data': 'targets.json',
+                      'target_settings': 'target-settings.json',
+                      'targets_maneuvers': 'predict.json',
+                      'targets_real': 'real-target-maneuvers.json',
+                      'analyse': 'analyse.json',
+                      'constraints': 'constraints.json',
+                      'route': 'route.json',
+                      'settings': 'settings.json',
+                      'hydrometeo': 'hydrometeo.json'}
+
 PDCase = make_dataclass("Case", [("datadir", str),
                                  ("dist1", float), ("dist2", float),
                                  ("course1", float), ("course2", float),
@@ -108,7 +120,7 @@ def get_metadata(case_directory):
     bare_name = os.path.split(case_directory)[-1]
     split = bare_name.split('_')
 
-    datadir = (case_directory)
+    datadir = case_directory
     dist1, dist2, course1, course2, speed1, speed2, peleng1, peleng2, safe_diverg, speed = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
     if len(split) > 0 and split[0] == 'sc':
         with open(os.path.join(case_directory + '/nav-data.json'), "r") as fp:

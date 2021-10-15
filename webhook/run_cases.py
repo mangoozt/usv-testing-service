@@ -13,48 +13,12 @@ import pandas as pd
 from geographiclib.geodesic import Geodesic
 import logging
 
-from generator import Generator, generate_metadata
+from generator import Generator, generate_metadata, CASE_FILENAMES, CASE_FILENAMES_KT, CASE_FILENAMES_VSE
 
 logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 
-CASE_FILENAMES = {'nav_data': 'nav-data.json',
-                  'maneuvers': 'maneuver.json',
-                  'targets_data': 'target-data.json',
-                  'target_settings': 'target-settings.json',
-                  'targets_maneuvers': 'target-maneuvers.json',
-                  'targets_real': 'real-target-maneuvers.json',
-                  'analyse': 'nav-report.json',
-                  'constraints': 'constraints.json',
-                  'route': 'route-data.json',
-                  'settings': 'settings.json',
-                  'hydrometeo': 'hmi-data.json'}
 
-CASE_FILENAMES_KT = {'nav_data': 'navigation.json',
-                     'maneuvers': 'result_maneuver.json',
-                     'targets_data': 'targets.json',
-                     'target_settings': 'targets_settings.json',
-                     'targets_maneuvers': 'predicted_tracks.json',
-                     'targets_real': 'real-target-maneuvers.json',
-                     'analyse': 'evaluation.json',
-                     'constraints': 'constraints.json',
-                     'route': 'route.json',
-                     'settings': 'settings.json',
-                     'hydrometeo': 'hydrometeo.json'}
-
-CASE_FILENAMES_VSE = {'nav_data': 'nav-data.json',
-                      'maneuvers': 'maneuver.json',
-                      'targets_data': 'targets.json',
-                      'target_settings': 'target-settings.json',
-                      'targets_maneuvers': 'predict.json',
-                      'targets_real': 'real-target-maneuvers.json',
-                      'analyse': 'analyse.json',
-                      'constraints': 'constraints.json',
-                      'route': 'route.json',
-                      'settings': 'settings.json',
-                      'hydrometeo': 'hydrometeo.json'}
-
-
-def fix_returncode(code):
+def fix_return_code(code):
     return ctypes.c_int32(code).value
 
 
@@ -75,6 +39,51 @@ def generate_case_files(case, datadir, safe_diverg_dist=1):
     gen.our_vel = case["speed"]
     os.makedirs(datadir, exist_ok=True)
     gen.construct_files(datadir, targets)
+
+
+def load_maneuver(maneuver_file, analyse_file):
+    """
+    Returns turn direction and scenarios types.
+    @param maneuver_file: maneuver file name
+    @param analyse_file: analyse file name
+    @return: array with target types and turn direction.
+    """
+    right = None
+    try:
+        with open(maneuver_file, "r") as f:
+            maneuver = json.loads(f.read())
+            parts = maneuver[0]['path']['items']
+            start_angle = parts[0]['begin_angle']
+            for part in parts:
+                if part['begin_angle'] != start_angle:
+                    c_dif = part['begin_angle'] - start_angle
+                    right = c_dif > 0
+                    break
+        #         if c_dif < 0 -> left, else right
+        #         right = True
+    except FileNotFoundError:
+        pass
+    types = []
+    try:
+        with open(analyse_file, "r") as f:
+            report = json.loads(f.read())
+            targets = report['target_statuses']
+            for target in targets:
+                types.append(target['scenario_type'])
+
+    except FileNotFoundError:
+        pass
+
+    return types, right
+
+
+def get_target_params(lat, lon, target_data):
+    lat_t, lon_t = target_data["lat"], target_data["lon"]
+    path = Geodesic.WGS84.Inverse(lat, lon, lat_t, lon_t)
+    dist = path['s12'] / 1852
+    course = target_data["COG"]
+    peleng = path['azi1']
+    return dist, course, peleng
 
 
 class ReportGenerator:
@@ -122,11 +131,11 @@ class ReportGenerator:
         case = df_case
         datadir = case['datadir']
 
-        usetmp = False
+        temp_dir = os.path.join(self.tmpdir, os.path.split(datadir)[-1])
+        os.makedirs(temp_dir, exist_ok=True)
         if case['dist1'] != 0:
-            datadir = (os.path.join(self.tmpdir, os.path.split(datadir)[-1]))
+            datadir = temp_dir
             generate_case_files(case, datadir)
-            usetmp = True
 
         os.chdir(datadir)
 
@@ -147,9 +156,6 @@ class ReportGenerator:
             except OSError:
                 pass
 
-        # Print the exit code.
-        exec_time = time.time()
-
         analyse_file = os.path.join(self.tmpdir, os.path.split(datadir)[-1], 'analyse')
         maneuver_file = os.path.join(self.tmpdir, os.path.split(datadir)[-1], 'maneuver')
         targets_maneuver_file = os.path.join(self.tmpdir, os.path.split(datadir)[-1], 'tagets')
@@ -164,165 +170,92 @@ class ReportGenerator:
                    "--maneuver", maneuver_file,
                    "--analyse", analyse_file,
                    "--predict", targets_maneuver_file] + self.extra_args
-        # Added to prevent freezing
+
+        completed_proc = None
+        exec_time = time.time()
         try:
             completed_proc = subprocess.run(command,
                                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                            stdin=subprocess.PIPE, timeout=35)
+                                            stdin=subprocess.PIPE, timeout=3)
             exec_time = time.time() - exec_time
-            # print("{} .Return code: {}. Exec time: {} sec".format(datadir, fix_returncode(completed_proc.returncode),
-            #                                                       exec_time))
-
-            nav_report = ""
-            target_data = None
-            try:
-                with open(analyse_file, "r") as f:
-                    nav_report = json.dumps(json.loads(f.read()), indent=4, sort_keys=True)
-            except FileNotFoundError:
-                pass
-            try:
-                with open(case_filenames['targets_data'], "r") as f:
-                    target_data = json.dumps(json.loads(f.read()), indent=4, sort_keys=True)
-            except FileNotFoundError:
-                pass
-
-            try:
-                target_data = json.loads(target_data)
-            except:
-                return
-            datadir_i = os.path.split(datadir)[1]
-            lat, lon = 0, 0
-            try:
-                with open(datadir + "/nav-data.json", "r") as f:
-                    nav_d = json.loads(f.read())
-                    lat, lon = nav_d['lat'], nav_d['lon']
-            except FileNotFoundError:
-                pass
-            try:
-                dist1, course1, peleng1 = self.get_target_params(lat, lon, target_data[0])
-            except IndexError or TypeError:
-                dist1, course1, peleng1 = 0, 0, 0
-            try:
-                dist2, course2, peleng2 = self.get_target_params(lat, lon, target_data[1])
-            except IndexError or TypeError:
-                dist2, course2, peleng2 = 0, 0, 0
-
-            types, right = self.load_maneuver(maneuver_file, analyse_file)
-            if len(types) == 0:
-                types.append(None)
-            if len(types) == 1:
-                types.append(None)
-
-            os.chdir(working_dir)
-            if fix_returncode(completed_proc.returncode) not in (0, 1, 2, 3, 4, 5):
-                print(datadir, '\n', completed_proc.stdout, '\n', completed_proc.stderr)
-            elif usetmp:
-                shutil.rmtree(datadir)
-            return {"datadir": datadir_i,
-                    "exec_time": exec_time,
-                    "nav_report": nav_report,
-                    "command": command,
-                    "code": fix_returncode(completed_proc.returncode),
-                    "dist1": dist1,
-                    "dist2": dist2,
-                    "course1": course1,
-                    "course2": course2,
-                    "peleng1": peleng1,
-                    "peleng2": peleng2,
-                    "right": right,
-                    "type1": types[0],
-                    "type2": types[1]
-                    }
-
+            code = fix_return_code(completed_proc.returncode)
+        # Added to prevent freezing
         except subprocess.TimeoutExpired:
-            logging.warning("TEST TIMEOUT ERR: " + datadir)
+            code = 6
             exec_time = time.time() - exec_time
 
-            target_data = None
-            try:
-                with open("target-data.json", "r") as f:
-                    target_data = json.dumps(json.loads(f.read()), indent=4, sort_keys=True)
-            except FileNotFoundError:
-                pass
-
-            datadir_i = os.path.split(datadir)[1]
-            lat, lon = 0, 0
-            try:
-                with open(datadir + "/nav-data.json", "r") as f:
-                    nav_d = json.loads(f.read())
-                    lat, lon = nav_d['lat'], nav_d['lon']
-            except FileNotFoundError:
-                pass
-            try:
-                dist1, course1, peleng1 = self.get_target_params(lat, lon, target_data[0])
-            except:
-                dist1, course1, peleng1 = 0, 0, 0
-
-            try:
-                dist2, course2, peleng2 = self.get_target_params(lat, lon, target_data[1])
-            except:
-                dist2, course2, peleng2 = 0, 0, 0
-
-            os.chdir(working_dir)
-            if usetmp:
-                shutil.rmtree(datadir)
-            return {"datadir": datadir_i,
-                    "exec_time": exec_time,
-                    "nav_report": None,
-                    "command": command,
-                    "code": 6,
-                    "dist1": dist1,
-                    "dist2": dist2,
-                    "course1": course1,
-                    "course2": course2,
-                    "peleng1": peleng1,
-                    "peleng2": peleng2,
-                    "right": None,
-                    "type1": None,
-                    "type2": None
-                    }
-
-    def load_maneuver(self, maneuver_file, analyse_file):
-        """
-        Returns turn direction and scenarios types.
-        @param datadir: data directory.
-        @return: array with target types and turn direction.
-        """
-        right = None
-        try:
-            with open(maneuver_file, "r") as f:
-                maneuver = json.loads(f.read())
-                parts = maneuver[0]['path']['items']
-                start_angle = parts[0]['begin_angle']
-                for part in parts:
-                    if part['begin_angle'] != start_angle:
-                        c_dif = part['begin_angle'] - start_angle
-                        right = c_dif > 0
-                        break
-            #         if c_dif < 0 -> left, else right
-            #         right = True
-        except FileNotFoundError:
-            pass
-        types = []
+        nav_report = ""
+        target_data = None
         try:
             with open(analyse_file, "r") as f:
-                report = json.loads(f.read())
-                targets = report['target_statuses']
-                for target in targets:
-                    types.append(target['scenario_type'])
-
+                nav_report = json.dumps(json.loads(f.read()), indent=4, sort_keys=True)
         except FileNotFoundError:
             pass
 
-        return types, right
+        try:
+            with open(case_filenames['targets_data'], "r") as f:
+                target_data = json.dumps(json.loads(f.read()), indent=4, sort_keys=True)
+        except FileNotFoundError:
+            pass
 
-    def get_target_params(self, lat, lon, target_data):
-        lat_t, lon_t = target_data["lat"], target_data["lon"]
-        path = Geodesic.WGS84.Inverse(lat, lon, lat_t, lon_t)
-        dist = path['s12'] / 1852
-        course = target_data["COG"]
-        peleng = path['azi1']
-        return dist, course, peleng
+        lat, lon = 0, 0
+        try:
+            with open(datadir + case_filenames["nav_data"], "r") as f:
+                nav_d = json.loads(f.read())
+                lat, lon = nav_d['lat'], nav_d['lon']
+        except FileNotFoundError:
+            pass
+
+        dist1, course1, peleng1 = 0, 0, 0
+        dist2, course2, peleng2 = 0, 0, 0
+
+        if target_data is not None:
+            try:
+                target_data = json.loads(target_data)
+            except TypeError:
+                pass
+
+            try:
+                dist1, course1, peleng1 = get_target_params(lat, lon, target_data[0])
+            except IndexError or TypeError:
+                pass
+            try:
+                dist2, course2, peleng2 = get_target_params(lat, lon, target_data[1])
+            except IndexError or TypeError:
+                pass
+
+        types, right = load_maneuver(maneuver_file, analyse_file)
+        if len(types) == 0:
+            types.append(None)
+        if len(types) == 1:
+            types.append(None)
+
+        os.chdir(working_dir)
+
+        if code not in (0, 1, 2, 3, 4, 5, 6):
+            if completed_proc is not None:
+                print(datadir, '\n', completed_proc.stdout, '\n', completed_proc.stderr)
+        if code == 6:
+            print(datadir, '\n', 'TIMEOUT')
+        else:
+            shutil.rmtree(temp_dir)
+
+        data_dir_name = os.path.split(datadir)[1]
+        return {"datadir": data_dir_name,
+                "exec_time": exec_time,
+                "nav_report": nav_report,
+                "command": command,
+                "code": code,
+                "dist1": dist1,
+                "dist2": dist2,
+                "course1": course1,
+                "course2": course2,
+                "peleng1": peleng1,
+                "peleng2": peleng2,
+                "right": right,
+                "type1": types[0],
+                "type2": types[1]
+                }
 
 
 class Report:
@@ -336,32 +269,36 @@ class Report:
         self.extra_args = extra_arguments
 
     def get_dataframe(self):
-        df = pd.json_normalize(self.cases)
+        cases_df = pd.json_normalize(self.cases)
         try:
-            df.drop(columns=['command', 'nav_report'], inplace=True)
+            cases_df.drop(columns=['command'], inplace=True)
         except KeyError:
             pass
-        return df
+        try:
+            cases_df.drop(columns=['nav_report'], inplace=True)
+        except KeyError:
+            pass
+        return cases_df
 
     def save_file(self, filename='report.xlsx'):
-        df = self.get_dataframe()
+        cases_df = self.get_dataframe()
 
         try:
             file_extension = filename.split('.')[-1]
             if file_extension == 'parquet':
-                df.to_parquet(filename)
+                cases_df.to_parquet(filename)
             elif file_extension == 'xlsx':
-                df.to_excel(filename)
+                cases_df.to_excel(filename)
             else:
-                df.to_csv(filename)
+                cases_df.to_csv(filename)
         except ValueError:
-            df.to_csv(filename)
+            cases_df.to_csv(filename)
 
     def get_danger_params(self, statuses):
         return [rec['datadir'] for rec in self.cases if rec['code'] in statuses]
 
 
-def test_usv_archived(archive, cases_dir, report_file=None):
+def test_usv_archived(archive, cases_dir):
     import zipfile
     tmpdir = tempfile.mkdtemp(prefix=os.getcwd() + '/')
     with zipfile.ZipFile(archive, 'r') as zip_ref:
@@ -370,7 +307,7 @@ def test_usv_archived(archive, cases_dir, report_file=None):
     result = None
     if os.path.exists(executable):
         os.chmod(executable, 0o777)
-        result = test_usv(executable, cases_dir, report_file)
+        result = test_usv(executable, cases_dir)
     shutil.rmtree(tmpdir)
     return result
 
@@ -379,11 +316,9 @@ def test_usv(executable, cases_dir, extra_arguments=None):
     if extra_arguments is None:
         extra_arguments = []
 
-    report = ReportGenerator(executable)
+    report_generator = ReportGenerator(executable)
 
-    report_out = report.generate(cases_dir, extra_arguments=extra_arguments)
-
-    return report_out
+    return report_generator.generate(cases_dir, extra_arguments=extra_arguments)
 
 
 if __name__ == "__main__":
@@ -412,11 +347,11 @@ if __name__ == "__main__":
     usv_executable = os.path.abspath(args.executable)
 
     logging.info("Start running cases...")
-    t0 = time.time()
+    time_start = time.time()
     report_out = test_usv(usv_executable, cur_dir, extra_arguments=extra_args)
 
-    logging.info(f'Finished in {time.time() - t0} sec')
-    t_save = time.time()
+    logging.info(f'Finished in {time.time() - time_start} sec')
+
     if not args.noreport:
         if args.report_file is None:
             report_file = os.path.join(cur_dir, f"report1_{date.today()}.csv")
@@ -424,17 +359,20 @@ if __name__ == "__main__":
             report_file = args.report_file
 
         logging.info(f"Start saving report to '{report_file}'")
+        t_save = time.time()
         report_out.save_file(report_file)
+        logging.info(f'Save time: {time.time() - t_save}')
 
     exitcode = 0
     if args.print_result or args.failcode:
         df = report_out.get_dataframe()
         if args.print_result:
             if len(df) > 0:
-                print(df[['exec_time', 'datadir', 'code']])
+                with pd.option_context('display.max_rows', None, 'display.max_columns',
+                                       None):  # more options can be specified also
+                    print(df)
         if args.failcode and not df['code'].between(0, 1).all():
             exitcode = 2
 
-    logging.info(f'Save time: {time.time() - t_save}')
-    logging.info(f'Total time: {time.time() - t0}')
+    logging.info(f'Total time: {time.time() - time_start}')
     exit(exitcode)
