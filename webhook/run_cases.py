@@ -176,7 +176,7 @@ class ReportGenerator:
         try:
             completed_proc = subprocess.run(command,
                                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                            stdin=subprocess.PIPE, timeout=3)
+                                            stdin=subprocess.PIPE, timeout=35)
             exec_time = time.time() - exec_time
             code = fix_return_code(completed_proc.returncode)
         # Added to prevent freezing
@@ -368,9 +368,7 @@ if __name__ == "__main__":
         df = report_out.get_dataframe()
         if args.print_result:
             if len(df) > 0:
-                with pd.option_context('display.max_rows', None, 'display.max_columns',
-                                       None):  # more options can be specified also
-                    print(df)
+                print(df)
         if args.failcode and not df['code'].between(0, 1).all():
             exitcode = 2
 
