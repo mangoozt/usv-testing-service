@@ -78,3 +78,7 @@ if __name__ == "__main__":
         logging.info(f'Sending report file: `{report_file}`')
         upload_results(args.url, report_file, title=args.title, commit_sha1=args.sha1, commit_date=args.datetime,
                        build_number=args.build)
+        logging.info(f'Sending primary report file: `{report_file_p}`')
+        upload_results(args.url, report_file_p, title=args.title + "_primary", commit_sha1=args.sha1,
+                       commit_date=args.datetime,
+                       build_number=args.build)
