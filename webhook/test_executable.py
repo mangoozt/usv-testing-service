@@ -6,6 +6,8 @@ import time
 
 import requests
 
+PATH_TO_PRIMARY_CASES = './primary/'
+
 from run_cases import test_usv
 
 logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
@@ -71,6 +73,7 @@ if __name__ == "__main__":
         work_dir = os.path.abspath(os.getcwd())
 
     report_file = test_executable(usv_executable, working_dir=work_dir, extra_arguments=extra_args)
+    report_file_p = test_executable(usv_executable, working_dir=PATH_TO_PRIMARY_CASES, extra_arguments=extra_args)
     if len(args.url) > 0:
         logging.info(f'Sending report file: `{report_file}`')
         upload_results(args.url, report_file, title=args.title, commit_sha1=args.sha1, commit_date=args.datetime,
