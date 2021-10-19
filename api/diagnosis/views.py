@@ -48,6 +48,9 @@ def details(request, slug):
             except ZeroDivisionError:
                 percent_a.append(100)
     # TODO add stats
+    scenarios_pivot_table = obj.pivot_scenario_types()
+    scenarios_pivot_table.style.background_gradient(cmap='Blues')
+
     rec = {"chart_data": json.dumps(list(chart_data), ensure_ascii=False),
            "date": str(obj.date),
            "n_targ": obj.n_targets,
@@ -56,8 +59,7 @@ def details(request, slug):
            "statistics_file": obj.file,
            "img": reverse('testing_result_plot', kwargs={'slug': obj.slug}),
            "img_min": reverse('testing_result_plot', kwargs={'slug': obj.slug, 'type': 'minister'}),
-           "solv_tr": solv_tr,
-           "percent": percent_a,
+           "scenarios_pivot_table": scenarios_pivot_table.to_html(),
            "sha1": obj.commit_sha1}
     return render(request, 'details.html', context=rec)
 

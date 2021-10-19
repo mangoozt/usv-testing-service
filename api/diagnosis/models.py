@@ -31,17 +31,6 @@ class TestingRecording(models.Model):
     processed = models.BooleanField(default=False)
     slug = models.SlugField(max_length=200, unique=True, default='')
     n_scenarios = models.IntegerField(default=0)
-    f2f = models.IntegerField(default=0)
-    ovn = models.IntegerField(default=0)
-    ov = models.IntegerField(default=0)
-    gw = models.IntegerField(default=0)
-    sve = models.IntegerField(default=0)
-    gwp = models.IntegerField(default=0)
-    sp = models.IntegerField(default=0)
-    cm = models.IntegerField(default=0)
-    ci = models.IntegerField(default=0)
-    vrf = models.IntegerField(default=0)
-    vrb = models.IntegerField(default=0)
     sc_set = models.ForeignKey("ScenariosSet", on_delete=models.CASCADE, blank=True, null=True)
 
     def save(self, *args, **kwargs):
@@ -51,7 +40,6 @@ class TestingRecording(models.Model):
             self.process_sha1()
             process_graphs(self)
             create_sc_for_rec(self)
-            self.calc_num_scenars()
             self.processed = True
             self.save()
 
@@ -65,19 +53,16 @@ class TestingRecording(models.Model):
             else:
                 self.title = "Couldn't retrieve commit message"
 
-    def calc_num_scenars(self):
+    def pivot_scenario_types(self):
+        """
+        Calculates pivot table for code percentage per scenario type
+        @rtype: pd.DataFrame
+        """
         df = load_df_from_rec(self)
-        self.f2f = len(df.loc[(df['type1'] == "Face to face") & (df['code'] == 0) & (df['code'] == 0)])
-        self.ovn = len(df.loc[(df['type1'] == "Overtaken") & (df['code'] == 0) & (df['code'] == 0)])
-        self.ov = len(df.loc[(df['type1'] == "Overtake") & (df['code'] == 0) & (df['code'] == 0)])
-        self.gw = len(df.loc[(df['type1'] == "Give way") & (df['code'] == 0) & (df['code'] == 0)])
-        self.sve = len(df.loc[(df['type1'] == "Save") & (df['code'] == 0) & (df['code'] == 0)])
-        self.gwp = len(df.loc[(df['type1'] == "Give way priority") & (df['code'] == 0) & (df['code'] == 0)])
-        self.sp = len(df.loc[(df['type1'] == "Save priority") & (df['code'] == 0) & (df['code'] == 0)])
-        self.cm = len(df.loc[(df['type1'] == "Cross move") & (df['code'] == 0) & (df['code'] == 0)])
-        self.ci = len(df.loc[(df['type1'] == "Cross in") & (df['code'] == 0) & (df['code'] == 0)])
-        self.vrf = len(df.loc[(df['type1'] == "Vision restricted forward") & (df['code'] == 0) & (df['code'] == 0)])
-        self.vrb = len(df.loc[(df['type1'] == "Vision restricted backward") & (df['code'] == 0) & (df['code'] == 0)])
+        a = df.melt(id_vars=df.columns[:-2], value_name="type").dropna(subset=["type"]).drop(columns=["variable"])
+        p = pd.pivot_table(a, values='datadir', index=['type'], columns=['code'], aggfunc='count', fill_value=0)
+        p_sum = p.sum(axis=1)
+        return p.divide(p_sum, axis=0) * 100
 
     def to_dataframe(self):
         def f(arr):
