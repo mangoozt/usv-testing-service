@@ -36,20 +36,12 @@ def details(request, slug):
 
     df = obj.to_dataframe().reset_index()
     chart_data = [df.columns.tolist()] + df.values.tolist()
-    percent_a = []
-    solv_tr = [obj.f2f, obj.ovn, obj.ov, obj.gw, obj.sve, obj.gwp, obj.sp, obj.cm, obj.ci, obj.vrf, obj.vrb]
-    if obj.sc_set is not None:
-        solv_sc = [obj.sc_set.f2f, obj.sc_set.ovn, obj.sc_set.ov, obj.sc_set.gw,
-                   obj.sc_set.sve, obj.sc_set.gwp, obj.sc_set.sp, obj.sc_set.cm,
-                   obj.sc_set.ci, obj.sc_set.vrf, obj.sc_set.vrb]
-        for i in range(len(solv_tr)):
-            try:
-                percent_a.append(solv_tr[i] / solv_sc[i] * 100)
-            except ZeroDivisionError:
-                percent_a.append(100)
-    # TODO add stats
+
     scenarios_pivot_table = obj.pivot_scenario_types()
-    scenarios_pivot_table.style.background_gradient(cmap='Blues')
+    if scenarios_pivot_table is not None:
+        scenarios_pivot_table = scenarios_pivot_table.to_html()
+    else:
+        scenarios_pivot_table = "Report file is missing"
 
     rec = {"chart_data": json.dumps(list(chart_data), ensure_ascii=False),
            "date": str(obj.date),
@@ -59,7 +51,7 @@ def details(request, slug):
            "statistics_file": obj.file,
            "img": reverse('testing_result_plot', kwargs={'slug': obj.slug}),
            "img_min": reverse('testing_result_plot', kwargs={'slug': obj.slug, 'type': 'minister'}),
-           "scenarios_pivot_table": scenarios_pivot_table.to_html(),
+           "scenarios_pivot_table": scenarios_pivot_table,
            "sha1": obj.commit_sha1}
     return render(request, 'details.html', context=rec)
 

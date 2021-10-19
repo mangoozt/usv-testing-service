@@ -59,10 +59,13 @@ class TestingRecording(models.Model):
         @rtype: pd.DataFrame
         """
         df = load_df_from_rec(self)
-        a = df.melt(id_vars=df.columns[:-2], value_name="type").dropna(subset=["type"]).drop(columns=["variable"])
-        p = pd.pivot_table(a, values='datadir', index=['type'], columns=['code'], aggfunc='count', fill_value=0)
-        p_sum = p.sum(axis=1)
-        return p.divide(p_sum, axis=0) * 100
+        if df is not None:
+            a = df.melt(id_vars=df.columns[:-2], value_name="type").dropna(subset=["type"]).drop(columns=["variable"])
+            p = pd.pivot_table(a, values='datadir', index=['type'], columns=['code'], aggfunc='count', fill_value=0)
+            p_sum = p.sum(axis=1)
+            return p.divide(p_sum, axis=0) * 100
+        else:
+            return None
 
     def to_dataframe(self):
         def f(arr):
@@ -126,16 +129,21 @@ def load_df_from_rec(recording):
     @return:
     """
     try:
-        file_extension = recording.file.path.split('.')[-1]
-        if file_extension == 'parquet':
-            df = pd.read_parquet(recording.file.path)
-        elif file_extension == 'xlsx':
-            df = pd.read_excel(recording.file.path, engine='openpyxl')
-        else:
+        try:
+            file_extension = recording.file.path.split('.')[-1]
+            if file_extension == 'parquet':
+                df = pd.read_parquet(recording.file.path)
+            elif file_extension == 'xlsx':
+                df = pd.read_excel(recording.file.path, engine='openpyxl')
+            else:
+                df = pd.read_csv(recording.file.path)
+        except ValueError:
             df = pd.read_csv(recording.file.path)
-    except ValueError:
-        df = pd.read_csv(recording.file.path)
-    return df
+
+        return df
+    except FileNotFoundError:
+        return None
+
 
 
 @postpone
