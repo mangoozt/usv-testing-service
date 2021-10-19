@@ -73,7 +73,7 @@ def build_percent_diag(filename):
         code5_p = list(a[5].values)
     except KeyError:
         code5_p = [0 for i in range(len(dists))]
-    print(list(asum.values))
+
     return [code0_p, code1_p, code2_p, code4_p, code5_p, dists, n_targ, ]
 
 

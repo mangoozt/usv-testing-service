@@ -16,5 +16,5 @@ class UploadMetaFileForm(forms.Form):
 
 
 class ComparationForm(forms.Form):
-    prev = forms.ModelChoiceField(queryset=TestingRecording.objects.order_by('-pk'), required=True)
-    obj = forms.ModelChoiceField(queryset=TestingRecording.objects.order_by('-pk'), required=True)
+    prev = forms.ModelChoiceField(queryset=TestingRecording.objects.order_by('-pk'), required=True, to_field_name='slug')
+    obj = forms.ModelChoiceField(queryset=TestingRecording.objects.order_by('-pk'), required=True, to_field_name='slug')

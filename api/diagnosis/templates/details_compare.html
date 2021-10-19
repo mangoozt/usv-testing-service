@@ -6,8 +6,7 @@
 {% endblock %}
 {% block title %}{{ title }}{% endblock %}
 {% block details %}
-    <form method="post" enctype="multipart/form-data" class="col">
-        {% csrf_token %}
+    <form method="get" class="col">
         {{ form.non_field_errors }}
         <div class="input-field col s12 m6">
             {{ form.prev.errors }}

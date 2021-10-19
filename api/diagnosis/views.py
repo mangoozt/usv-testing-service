@@ -105,21 +105,20 @@ def upload_metafile(request):
     return render(request, 'upload.html', {'form': form})
 
 
-def create_comparation(request):
-    if request.method == 'POST':
-        form = ComparationForm(request.POST, request.FILES)
-        if form.is_valid():
-            obj: TestingRecording = form.cleaned_data['obj']
-            prev: TestingRecording = form.cleaned_data['prev']
-            cmp_result = obj.compare(prev).reset_index()
-            chart_data = [cmp_result.columns.tolist()] + cmp_result.values.tolist()
-            rec = {
-                "chart_data": json.dumps(list(chart_data), ensure_ascii=False),
-                "title": "Сравнение результатов",
-                "form": ComparationForm(initial={'prev': prev, 'obj': obj})
-                # "form": ComparationForm()
-            }
-            return render(request, 'details_compare.html', context=rec)
+def create_comparation(request, obj_slug=None, prev_slug=None):
+    form = ComparationForm(request.GET, request.FILES)
+    if form.is_valid():
+        obj: TestingRecording = form.cleaned_data['obj']
+        prev: TestingRecording = form.cleaned_data['prev']
+        cmp_result = obj.compare(prev).reset_index()
+        chart_data = [cmp_result.columns.tolist()] + cmp_result.values.tolist()
+        rec = {
+            "chart_data": json.dumps(list(chart_data), ensure_ascii=False),
+            "title": "Сравнение результатов",
+            "form": ComparationForm(initial={'prev': prev, 'obj': obj})
+            # "form": ComparationForm()
+        }
+        return render(request, 'details_compare.html', context=rec)
     else:
         form = ComparationForm()
         return render(request, 'details_compare.html', {'form': form, "title": "Сравнение результатов", })
