@@ -1,4 +1,0 @@
-requests==2.26.0
-geographiclib==1.52
-pandas==1.3.3
-fastparquet
