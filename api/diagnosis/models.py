@@ -8,7 +8,7 @@ from django.db import models
 from django.utils import timezone
 from django.utils.text import slugify
 
-from .build_graphs import build_percent_diag, plot_graph_normal, plot_minister_mode
+from .build_graphs import plot_graph_normal, plot_minister_mode
 from .decorators import postpone
 from .gitgub_utils import get_commit
 
@@ -18,16 +18,9 @@ class TestingRecording(models.Model):
     file = models.FileField(upload_to='')
     title = models.TextField(default="", max_length=1000)
     commit_sha1 = models.TextField(default="", max_length=40)
-    commit_date = models.DateTimeField(default=None, null=True)
+    commit_date = models.DateTimeField(default=None, null=True, blank=True)
     build_number = models.TextField(default="", max_length=20)
-    # We will storage all plots data in string format using '::' delimiter
-    code0 = models.TextField(blank=True, default='', max_length=2000)
-    code1 = models.TextField(blank=True, default='', max_length=2000)
-    code2 = models.TextField(blank=True, default='', max_length=2000)
-    code4 = models.TextField(blank=True, default='', max_length=2000)
-    code5 = models.TextField(blank=True, default='', max_length=2000)
     n_targets = models.IntegerField(default=1)
-    dists = models.TextField(blank=True, default='', max_length=2000)
     processed = models.BooleanField(default=False)
     slug = models.SlugField(max_length=200, unique=True, default='')
     n_scenarios = models.IntegerField(default=0)
@@ -38,7 +31,6 @@ class TestingRecording(models.Model):
         super().save(*args, **kwargs)
         if not self.processed:
             self.process_sha1()
-            process_graphs(self)
             create_sc_for_rec(self)
             self.processed = True
             self.save()
@@ -68,12 +60,52 @@ class TestingRecording(models.Model):
             return None
 
     def to_dataframe(self):
-        def f(arr):
-            return [float(a) for a in arr.split(sep='::')]
+        """
+        Builds percent diagram with codes and errors to velocities graph
+        @return: pd.Dataframe
+        """
+        filename = self.file.path
 
-        return pd.DataFrame(
-            data=list(zip(f(self.dists), f(self.code0), f(self.code1), f(self.code2), f(self.code4), f(self.code5))),
-            columns=('Дистанция', 'Код 0', 'Код 1', 'Код 2', 'Код 4', 'Код 5')).set_index('Дистанция')
+        try:
+            file_extension = filename.split('.')[-1]
+            if file_extension == 'parquet':
+                df = pd.read_parquet(filename, engine='fastparquet')
+            elif file_extension == 'xlsx':
+                df = pd.read_excel(filename, engine='openpyxl')
+            else:
+                df = pd.read_csv(filename.path)
+        except ValueError:
+            df = pd.read_csv(filename.path)
+
+        def get_distance(foldername):
+            def get_n_targets(name):
+                """
+                Detects number of targets in case
+                @param name: foldername with path
+                @return:
+                """
+                foldername = os.path.split(name)[1]
+                foldername2 = foldername.split(sep="_")
+                if float(foldername2[1]) == 0 or float(foldername2[2]) == 0:
+                    return 1
+                else:
+                    return 2
+
+            foldername = os.path.split(foldername)[1]
+            n_targ = get_n_targets(foldername)
+            foldername2 = foldername.split(sep="_")
+            if n_targ == 1:
+                return max(float(foldername2[1]), float(foldername2[2]))
+            elif n_targ == 2:
+                return min(float(foldername2[1]), float(foldername2[2]))
+
+        df['dist'] = df['datadir'].apply(get_distance)
+        n_targ = 2 if len(df.query('dist1!=0 & dist2 != 0')) else 1
+        a = pd.pivot_table(df, values='datadir', index=['dist'], columns=['code'], aggfunc='count', fill_value=0)
+        asum = a.sum(axis=1)
+        a = a.divide(asum, axis=0) * 100
+        # a = a.set_index('dist')
+        return a
 
     def compare(self, previous):
         """
@@ -107,21 +139,6 @@ class TestingRecording(models.Model):
         return self.title + '_' + str(self.date)
 
 
-# @postpone
-def process_graphs(recording):
-    codes = build_percent_diag(recording.file.path)
-    recording.code0 = process_array(codes[0])
-    recording.code1 = process_array(codes[1])
-    recording.code2 = process_array(codes[2])
-    recording.code4 = process_array(codes[3])
-    recording.code5 = process_array(codes[4])
-    recording.dists = process_array(codes[5])
-    recording.n_targets = codes[6]
-    recording.date = timezone.now()
-    recording.processed = True
-    recording.save()
-
-
 def load_df_from_rec(recording):
     """
     Loads pandas df from recording stats file
@@ -143,7 +160,6 @@ def load_df_from_rec(recording):
         return df
     except FileNotFoundError:
         return None
-
 
 
 @postpone

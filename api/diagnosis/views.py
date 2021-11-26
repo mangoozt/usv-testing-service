@@ -35,8 +35,7 @@ def details(request, slug):
     obj = get_object_or_404(TestingRecording, slug=slug)
 
     df = obj.to_dataframe().reset_index()
-    chart_data = [df.columns.tolist()] + df.values.tolist()
-
+    chart_data = [list(map(str, df.columns.tolist()))] + df.values.tolist()
     scenarios_pivot_table = obj.pivot_scenario_types()
     if scenarios_pivot_table is not None:
         scenarios_pivot_table = scenarios_pivot_table.to_html()
@@ -103,7 +102,7 @@ def create_comparation(request, obj_slug=None, prev_slug=None):
         obj: TestingRecording = form.cleaned_data['obj']
         prev: TestingRecording = form.cleaned_data['prev']
         cmp_result = obj.compare(prev).reset_index()
-        chart_data = [cmp_result.columns.tolist()] + cmp_result.values.tolist()
+        chart_data = [list(map(str, cmp_result.columns.tolist()))] + cmp_result.values.tolist()
         rec = {
             "chart_data": json.dumps(list(chart_data), ensure_ascii=False),
             "title": "Сравнение результатов",
