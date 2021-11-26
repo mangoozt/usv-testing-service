@@ -49,7 +49,7 @@ def details(request, slug):
            "n_sc": obj.n_scenarios,
            "statistics_file": obj.file,
            "img": reverse('testing_result_plot', kwargs={'slug': obj.slug}),
-           "img_min": reverse('testing_result_plot', kwargs={'slug': obj.slug, 'type': 'minister'}),
+           "img_min": reverse('testing_result_plot', kwargs={'slug': obj.slug, 'graph_type': 'minister'}),
            "scenarios_pivot_table": scenarios_pivot_table,
            "sha1": obj.commit_sha1}
     return render(request, 'details.html', context=rec)
