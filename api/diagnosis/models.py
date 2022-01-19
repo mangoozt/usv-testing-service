@@ -36,7 +36,7 @@ class TestingRecording(models.Model):
             self.save()
 
     def process_sha1(self):
-        if self.commit_sha1 and not self.title:
+        if self.commit_sha1:
             commit = get_commit(repo_url=os.getenv('GITHUB_REPO_URL'), commit_sha1=self.commit_sha1,
                                 token=os.getenv('GITHUB_TOKEN'))
             if commit is not None:
